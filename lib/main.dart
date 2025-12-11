@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
+import 'screens/home/home_screen.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const JobsifyApp());
 }
 
-class MyApp extends StatelessWidget {
+class JobsifyApp extends StatelessWidget {
+  const JobsifyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Jobsify',
       debugShowCheckedModeBanner: false,
 
-      home: LoginScreen(),
+      home: const LoginScreen(),
       routes: {
         '/login': (context) => LoginScreen(),
         '/register': (context) => RegisterScreen(),
+        '/home': (context) => const HomeScreen(),
       },
     );
   }
