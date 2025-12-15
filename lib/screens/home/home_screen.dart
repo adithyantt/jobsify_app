@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../jobs/jobs_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -119,8 +120,12 @@ class CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        // Later: Navigate to category job list
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => JobsListScreen(category: label)),
+        );
       },
+
       child: Container(
         decoration: BoxDecoration(
           color: Colors.blue.shade50,
