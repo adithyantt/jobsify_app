@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'job_detail_screen.dart';
 
 class JobsListScreen extends StatelessWidget {
   final String category;
@@ -153,8 +154,12 @@ class JobCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: ElevatedButton(
               onPressed: () {
-                // later: job detail
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                );
               },
+
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
