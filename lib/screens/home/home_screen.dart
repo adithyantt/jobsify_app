@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../jobs/jobs_list_screen.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,8 +14,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _pages = [
     const HomeContent(),
-    const Center(child: Text("Post a Job", style: TextStyle(fontSize: 22))),
-    const Center(child: Text("Profile Page", style: TextStyle(fontSize: 22))),
+    const Center(child: Text("Jobs Page", style: TextStyle(fontSize: 22))),
+    const ProfileScreen(),
   ];
 
   @override
@@ -45,8 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            label: "Post Job",
+            icon: Icon(Icons.work_outline),
+            label: "Jobs",
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
