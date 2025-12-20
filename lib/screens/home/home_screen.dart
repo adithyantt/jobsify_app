@@ -1,147 +1,182 @@
 import 'package:flutter/material.dart';
-import '../jobs/jobs_list_screen.dart';
-import '../profile/profile_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = [
-    const HomeContent(),
-    const Center(child: Text("Jobs Page", style: TextStyle(fontSize: 22))),
-    const ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+
       appBar: AppBar(
-        title: const Text("Jobsify"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "Your Location",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Text(
+              "Thiruvananthapuram",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
+            icon: const Icon(Icons.notifications_none, color: Colors.black),
             onPressed: () {},
           ),
         ],
       ),
 
-      body: _pages[_selectedIndex],
-
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.work_outline),
-            label: "Jobs",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-      ),
-    );
-  }
-}
-
-class HomeContent extends StatelessWidget {
-  const HomeContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Search Bar
-          TextField(
-            decoration: InputDecoration(
-              hintText: "Search for jobs (Electrician, Carpenter...)",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.grey.shade200,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const TextField(
+                decoration: InputDecoration(
+                  icon: Icon(Icons.search),
+                  hintText: "Search for services",
+                  border: InputBorder.none,
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 25),
+            const SizedBox(height: 24),
 
-          const Text(
-            "Popular Categories",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+            // Categories
+            const Text(
+              "Categories",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
 
-          const SizedBox(height: 15),
+            const SizedBox(height: 16),
 
-          // Category Grid
-          GridView.count(
-            shrinkWrap: true,
-            crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            physics: const NeverScrollableScrollPhysics(),
-            children: const [
-              CategoryTile(icon: Icons.lightbulb_outline, label: "Electrician"),
-              CategoryTile(icon: Icons.construction, label: "Carpenter"),
-              CategoryTile(icon: Icons.plumbing, label: "Plumber"),
-              CategoryTile(icon: Icons.home_repair_service, label: "Mechanic"),
-              CategoryTile(icon: Icons.local_shipping, label: "Driver"),
-              CategoryTile(icon: Icons.build, label: "Technician"),
-            ],
-          ),
-        ],
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              children: const [
+                _CategoryTile(icon: Icons.flash_on, label: "Electrician"),
+                _CategoryTile(icon: Icons.plumbing, label: "Plumber"),
+                _CategoryTile(icon: Icons.carpenter, label: "Carpenter"),
+                _CategoryTile(icon: Icons.cleaning_services, label: "Cleaning"),
+                _CategoryTile(icon: Icons.home_repair_service, label: "Repair"),
+                _CategoryTile(icon: Icons.local_shipping, label: "Driver"),
+              ],
+            ),
+
+            const SizedBox(height: 28),
+
+            // Popular Services
+            const Text(
+              "Popular Services",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 16),
+
+            _ServiceCard(
+              title: "Electrician",
+              subtitle: "Wiring, fan, light repair",
+              icon: Icons.flash_on,
+            ),
+            _ServiceCard(
+              title: "Plumber",
+              subtitle: "Leakage & pipe fixing",
+              icon: Icons.plumbing,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class CategoryTile extends StatelessWidget {
+class _CategoryTile extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const CategoryTile({super.key, required this.icon, required this.label});
+  const _CategoryTile({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => JobsListScreen(category: label)),
-        );
-      },
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 30, color: const Color(0xFF1B0C6D)),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
 
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.blue.shade50,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(12),
+class _ServiceCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
 
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: Colors.blue),
-            const SizedBox(height: 10),
-            Text(label, textAlign: TextAlign.center),
-          ],
-        ),
+  const _ServiceCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: const Color(0xFF1B0C6D),
+            child: Icon(icon, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ],
       ),
     );
   }
