@@ -15,8 +15,9 @@ class RegisterScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 40),
 
+              // Title
               const Text(
-                "Create an Account",
+                "Jobsify",
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
@@ -25,25 +26,21 @@ class RegisterScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                "Join Jobsify and start working locally",
+                "Create an account to get started",
                 style: TextStyle(color: Colors.grey),
               ),
 
               const SizedBox(height: 40),
 
-              _inputField(label: "Full name", hint: "John Doe"),
+              _inputField(label: "Full name"),
 
               const SizedBox(height: 20),
 
-              _inputField(label: "Email", hint: "example@gmail.com"),
+              _inputField(label: "Email"),
 
               const SizedBox(height: 20),
 
-              _inputField(
-                label: "Password",
-                hint: "••••••••",
-                isPassword: true,
-              ),
+              _inputField(label: "Password", isPassword: true),
 
               const SizedBox(height: 30),
 
@@ -111,11 +108,7 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  Widget _inputField({
-    required String label,
-    required String hint,
-    bool isPassword = false,
-  }) {
+  Widget _inputField({required String label, bool isPassword = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -124,7 +117,6 @@ class RegisterScreen extends StatelessWidget {
         TextField(
           obscureText: isPassword,
           decoration: InputDecoration(
-            hintText: hint,
             filled: true,
             fillColor: Colors.grey.shade100,
             suffixIcon: isPassword ? const Icon(Icons.visibility_off) : null,
