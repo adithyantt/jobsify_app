@@ -11,6 +11,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool isLoading = false;
+  bool showPassword = false;
 
   @override
   void dispose() {
@@ -55,6 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 label: "Password",
                 controller: passwordController,
                 isPassword: true,
+                showPassword: showPassword,
+                onToggle: () {
+                  setState(() {
+                    showPassword = !showPassword;
+                  });
+                },
               ),
 
               const SizedBox(height: 20),
@@ -69,8 +77,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: _loginUser,
-                  child: const Text("LOGIN", style: TextStyle(fontSize: 16)),
+                  onPressed: isLoading ? null : _loginUser,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "LOGIN",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
               ),
 
@@ -103,36 +123,63 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // 🔹 LOGIN FUNCTION
   Future<void> _loginUser() async {
-    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+    final error = _validateFields();
+    if (error != null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      ).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
 
-    final success = await AuthService.loginUser(
-      email: emailController.text.trim(),
-      password: passwordController.text,
-    );
+    setState(() {
+      isLoading = true;
+    });
 
-    if (success) {
+    try {
+      final success = await AuthService.loginUser(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid email or password")),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Login Successful")));
-
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid email or password")),
-      );
+      ).showSnackBar(const SnackBar(content: Text("Something went wrong")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
-  // 🔹 INPUT FIELD
+  String? _validateFields() {
+    if (!emailController.text.contains("@")) {
+      return "Enter a valid email address";
+    }
+    if (passwordController.text.length < 6) {
+      return "Password must be at least 6 characters";
+    }
+    return null;
+  }
+
   Widget _inputField({
     required String label,
     required TextEditingController controller,
     bool isPassword = false,
+    bool showPassword = false,
+    VoidCallback? onToggle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,11 +188,23 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          obscureText: isPassword,
+          obscureText: isPassword && !showPassword,
+          keyboardType: label == "Email"
+              ? TextInputType.emailAddress
+              : TextInputType.text,
+          enableSuggestions: !isPassword,
+          autocorrect: !isPassword,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
-            suffixIcon: isPassword ? const Icon(Icons.visibility_off) : null,
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      showPassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: onToggle,
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
