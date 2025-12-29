@@ -94,7 +94,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text("SIGN UP", style: TextStyle(fontSize: 16)),
+                      : const Text(
+                          "SIGN UP",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
               ),
 
@@ -189,6 +192,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (success) {
+        nameController.clear();
+        emailController.clear();
+        passwordController.clear();
+
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         ScaffoldMessenger.of(
@@ -224,6 +231,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword && !showPassword,
+          enableSuggestions: !isPassword,
+          autocorrect: !isPassword,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
