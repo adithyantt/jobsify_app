@@ -157,7 +157,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Registration Successful")));
-      Navigator.pop(context);
+
+      // ✅ GO TO HOME SCREEN
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
       ScaffoldMessenger.of(
         context,
