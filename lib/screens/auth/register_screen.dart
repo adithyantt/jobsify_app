@@ -12,6 +12,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool isLoading = false;
+  bool showPassword = false;
 
   @override
   void dispose() {
@@ -61,6 +63,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: "Password",
                 controller: passwordController,
                 isPassword: true,
+                showPassword: showPassword,
+                onToggle: () {
+                  setState(() {
+                    showPassword = !showPassword;
+                  });
+                },
               ),
 
               const SizedBox(height: 30),
@@ -76,8 +84,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: _registerUser,
-                  child: const Text("SIGN UP", style: TextStyle(fontSize: 16)),
+                  onPressed: isLoading ? null : _registerUser,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text("SIGN UP", style: TextStyle(fontSize: 16)),
                 ),
               ),
 
@@ -135,44 +152,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // 🔹 REGISTER FUNCTION (CLEAN & SAFE)
+  String? _validateFields() {
+    if (nameController.text.trim().length < 3) {
+      return "Name must be at least 3 characters";
+    }
+    if (!emailController.text.contains("@")) {
+      return "Enter a valid email address";
+    }
+    if (passwordController.text.length < 6) {
+      return "Password must be at least 6 characters";
+    }
+    return null;
+  }
+
   Future<void> _registerUser() async {
-    if (nameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        passwordController.text.isEmpty) {
+    final error = _validateFields();
+    if (error != null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      ).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
 
-    final success = await AuthService.registerUser(
-      name: nameController.text.trim(),
-      email: emailController.text.trim(),
-      password: passwordController.text,
-      role: "seeker",
-    );
+    setState(() {
+      isLoading = true;
+    });
 
-    if (!mounted) return;
+    try {
+      final success = await AuthService.registerUser(
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        role: "seeker",
+      );
 
-    if (success) {
+      if (!mounted) return;
+
+      if (success) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Registration failed")));
+      }
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Registration Successful")));
-
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Registration Failed")));
+      ).showSnackBar(const SnackBar(content: Text("Something went wrong")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
-  // 🔹 INPUT FIELD WIDGET
   Widget _inputField({
     required String label,
     required TextEditingController controller,
     bool isPassword = false,
+    bool showPassword = false,
+    VoidCallback? onToggle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,11 +223,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          obscureText: isPassword,
+          obscureText: isPassword && !showPassword,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
-            suffixIcon: isPassword ? const Icon(Icons.visibility_off) : null,
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      showPassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: onToggle,
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
