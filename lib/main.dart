@@ -24,8 +24,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
 
       // Entry point of the app
-      home: const SplashScreen(),
-
+      // home: const SplashScreen(),
+      home: const HomeScreen(),
       // Centralized route management
       routes: {
         '/login': (context) => const LoginScreen(),

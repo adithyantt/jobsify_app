@@ -25,12 +25,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
       appBar: AppBar(
         elevation: 0,
-        title: const Text("Jobsify"),
+        backgroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "Good Morning 👋",
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            Text(
+              "Jobsify",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B0C6D),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
+            icon: const Icon(Icons.notifications_none, color: Colors.black),
             onPressed: () {},
           ),
+          const SizedBox(width: 8),
         ],
       ),
 
@@ -90,6 +108,31 @@ class HomeContent extends StatelessWidget {
           ),
 
           const SizedBox(height: 24),
+
+          // 🚀 PRIMARY ACTIONS (MOST IMPORTANT)
+          Row(
+            children: const [
+              Expanded(
+                child: PrimaryActionCard(
+                  title: "Find Jobs",
+                  subtitle: "Work near you",
+                  icon: Icons.work,
+                  color: Color(0xFF1B0C6D),
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: PrimaryActionCard(
+                  title: "Hire Workers",
+                  subtitle: "Trusted professionals",
+                  icon: Icons.people,
+                  color: Color(0xFF16A34A),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
 
           // ⚡ Quick Actions
           Row(
@@ -244,11 +287,15 @@ class QuickAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        CircleAvatar(
-          backgroundColor: Colors.blue.shade50,
-          child: Icon(icon, color: Colors.blue),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B0C6D).withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: const Color(0xFF1B0C6D)),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
@@ -281,7 +328,11 @@ class JobCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(child: Icon(icon)),
+          CircleAvatar(
+            backgroundColor: const Color(0xFF1B0C6D).withOpacity(0.1),
+            child: Icon(icon, color: const Color(0xFF1B0C6D)),
+          ),
+
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,6 +374,49 @@ class WorkerCard extends StatelessWidget {
               Text(skill, style: const TextStyle(color: Colors.grey)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class PrimaryActionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  const PrimaryActionCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white, size: 30),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );
