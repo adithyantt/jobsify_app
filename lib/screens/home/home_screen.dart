@@ -254,10 +254,17 @@ class CategoryTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              radius: 22,
-              backgroundColor: const Color(0xFF1B0C6D).withOpacity(0.12),
-              child: Icon(icon, color: const Color(0xFF1B0C6D), size: 22),
+              backgroundColor: label == "Others"
+                  ? Colors.grey.shade200
+                  : const Color(0xFF1B0C6D).withOpacity(0.1),
+              child: Icon(
+                icon,
+                color: label == "Others"
+                    ? Colors.black54
+                    : const Color(0xFF1B0C6D),
+              ),
             ),
+
             const SizedBox(height: 10),
             Text(
               label,
