@@ -502,5 +502,3 @@ class AppDrawer extends StatelessWidget {
     );
   }
 }
-
-//this is the home screen
