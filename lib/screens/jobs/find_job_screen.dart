@@ -1,237 +1,161 @@
 import 'package:flutter/material.dart';
 import '../jobs/add_job_screen.dart';
+import '../../models/job_model.dart';
+import '../../services/job_service.dart';
 
-class FindJobsScreen extends StatelessWidget {
+class FindJobsScreen extends StatefulWidget {
   const FindJobsScreen({super.key});
+
+  @override
+  State<FindJobsScreen> createState() => _FindJobsScreenState();
+}
+
+class _FindJobsScreenState extends State<FindJobsScreen> {
+  late Future<List<Job>> jobsFuture;
 
   static const Color primaryColor = Colors.red;
 
   @override
+  void initState() {
+    super.initState();
+    jobsFuture = JobService.fetchJobs();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
-      // 🔴 APP BAR
       appBar: AppBar(
         backgroundColor: primaryColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text("Jobsify"),
+        title: const Text("Find Jobs"),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: Colors.amber,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.add, color: Colors.black),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddJobScreen()),
-                );
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddJobScreen()),
+              );
+            },
           ),
         ],
       ),
+      body: FutureBuilder<List<Job>>(
+        future: jobsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      // 🧱 BODY
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _searchBar(),
-            const SizedBox(height: 16),
-            _categoryChips(),
-            const SizedBox(height: 16),
-            _jobsHeader(),
-            const SizedBox(height: 16),
-
-            // 🔹 JOB CARDS (MOCK)
-            _jobCard(),
-            _jobCard(),
-            _jobCard(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 🔍 SEARCH BAR
-  Widget _searchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const TextField(
-        decoration: InputDecoration(
-          icon: Icon(Icons.search),
-          hintText: "Search jobs...",
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  // 🧩 CATEGORY CHIPS
-  Widget _categoryChips() {
-    final categories = ["All", "Plumber", "Painter", "Driver"];
-
-    return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final isSelected = index == 0;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isSelected ? primaryColor : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: primaryColor),
-            ),
-            child: Text(
-              categories[index],
-              style: TextStyle(
-                color: isSelected ? Colors.white : primaryColor,
-                fontWeight: FontWeight.w500,
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
               ),
-            ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No jobs available"));
+          }
+
+          final jobs = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: jobs.length,
+            itemBuilder: (context, index) {
+              final job = jobs[index];
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 🔖 CATEGORY TAG
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        job.category,
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // 🧱 TITLE
+                    Text(
+                      job.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // 📍 LOCATION
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          job.location,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 📞 ACTION BUTTON
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {},
+                        child: const Text("View Contact"),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
-      ),
-    );
-  }
-
-  // 📌 HEADER
-  Widget _jobsHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        Text("5 jobs available", style: TextStyle(fontWeight: FontWeight.w600)),
-        Row(
-          children: [
-            Icon(Icons.filter_list, size: 18),
-            SizedBox(width: 4),
-            Text("Filter"),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // 🧱 JOB CARD
-  Widget _jobCard() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _tag("Plumber", primaryColor),
-              const SizedBox(width: 6),
-              _tag("URGENT", Colors.orange),
-              const SizedBox(width: 6),
-              _tag("Verified", Colors.green),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            "Need Plumber for Kitchen Repair",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 6),
-
-          const Text(
-            "Kitchen sink and pipe repair needed urgently. Must have 2+ years experience.",
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-
-          const SizedBox(height: 10),
-
-          Row(
-            children: const [
-              Icon(Icons.location_on, size: 16, color: Colors.red),
-              SizedBox(width: 4),
-              Text("Sector 15, Delhi"),
-              Spacer(),
-              Icon(Icons.access_time, size: 16, color: Colors.red),
-              SizedBox(width: 4),
-              Text("2 hours ago"),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text(
-              "₹800–1000 / day",
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {},
-              child: const Text("View Contact"),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

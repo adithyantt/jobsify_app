@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
 
-class AddJobScreen extends StatelessWidget {
+class AddJobScreen extends StatefulWidget {
   const AddJobScreen({super.key});
 
-  // Match Home screen theme color
+  @override
+  State<AddJobScreen> createState() => _AddJobScreenState();
+}
+
+class _AddJobScreenState extends State<AddJobScreen> {
+  // Theme color (same as Home)
   static const Color primaryColor = Color(0xFF1B0C6D);
+
+  // Controllers
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _experienceController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _aboutController = TextEditingController();
+
+  // Dropdown value
+  String _selectedCategory = "Plumber";
 
   @override
   Widget build(BuildContext context) {
@@ -26,30 +41,44 @@ class AddJobScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _textField("Enter your full name"),
+              _textField("Enter your full name", controller: _nameController),
+
               const SizedBox(height: 16),
 
               _label("Category *"),
               _dropdown(),
+
               const SizedBox(height: 16),
 
               _label("Experience *"),
-              _textField("e.g., 5 years"),
+              _textField("e.g., 5 years", controller: _experienceController),
+
               const SizedBox(height: 16),
 
               _label("Location *"),
-              _textField("Enter your location/area"),
+              _textField(
+                "Enter your location/area",
+                controller: _locationController,
+              ),
+
               const SizedBox(height: 16),
 
               _label("Contact Number *"),
-              _textField("+91 98765 43210", keyboard: TextInputType.phone),
+              _textField(
+                "+91 98765 43210",
+                controller: _contactController,
+                keyboard: TextInputType.phone,
+              ),
+
               const SizedBox(height: 16),
 
               _label("About You"),
               _textField(
                 "Tell employers about your skills and experience",
+                controller: _aboutController,
                 maxLines: 4,
               ),
+
               const SizedBox(height: 24),
 
               Row(
@@ -66,7 +95,9 @@ class AddJobScreen extends StatelessWidget {
                       child: const Text("Cancel"),
                     ),
                   ),
+
                   const SizedBox(width: 16),
+
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -76,10 +107,7 @@ class AddJobScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: () {
-                        // UI-only action for now
-                        Navigator.pop(context);
-                      },
+                      onPressed: _submit,
                       child: const Text("Create"),
                     ),
                   ),
@@ -92,6 +120,15 @@ class AddJobScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // 🔹 SUBMIT (UI only for now)
+  void _submit() {
+    // Later this will call backend POST /jobs
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Profile created (UI only)")));
+    Navigator.pop(context);
   }
 
   // ---------- UI HELPERS ----------
@@ -108,10 +145,12 @@ class AddJobScreen extends StatelessWidget {
 
   Widget _textField(
     String hint, {
+    required TextEditingController controller,
     int maxLines = 1,
     TextInputType keyboard = TextInputType.text,
   }) {
     return TextField(
+      controller: controller,
       maxLines: maxLines,
       keyboardType: keyboard,
       decoration: InputDecoration(
@@ -139,7 +178,7 @@ class AddJobScreen extends StatelessWidget {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: "Plumber",
+          value: _selectedCategory,
           isExpanded: true,
           items: const [
             DropdownMenuItem(value: "Plumber", child: Text("Plumber")),
@@ -147,7 +186,11 @@ class AddJobScreen extends StatelessWidget {
             DropdownMenuItem(value: "Painter", child: Text("Painter")),
             DropdownMenuItem(value: "Driver", child: Text("Driver")),
           ],
-          onChanged: (value) {},
+          onChanged: (value) {
+            setState(() {
+              _selectedCategory = value!;
+            });
+          },
         ),
       ),
     );
