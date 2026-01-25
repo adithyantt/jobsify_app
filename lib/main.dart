@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Splash Screen
-import 'screens/splash/splash_screen.dart';
+// import 'screens/splash/splash_screen.dart';
 
 // Auth Screens
 import 'screens/auth/login_screen.dart';
