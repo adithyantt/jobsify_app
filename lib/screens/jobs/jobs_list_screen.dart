@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'job_detail_screen.dart';
+import '../../models/job_model.dart';
 
 class JobsListScreen extends StatelessWidget {
   final String category;
@@ -53,32 +54,38 @@ class JobsListScreen extends StatelessWidget {
 
 /* ---------------- DUMMY DATA ---------------- */
 
-final List<Map<String, String>> dummyJobs = [
-  {
-    "title": "Electrician needed for house wiring",
-    "location": "Thiruvananthapuram",
-    "description":
+final List<Job> dummyJobs = [
+  Job(
+    id: 1,
+    title: "Electrician needed for house wiring",
+    category: "Electrician",
+    location: "Thiruvananthapuram",
+    description:
         "Complete wiring work for a 2BHK house. Immediate requirement.",
-    "category": "Electrician",
-  },
-  {
-    "title": "AC service & repair technician",
-    "location": "Kochi",
-    "description": "Split AC servicing and gas refill required.",
-    "category": "Electrician",
-  },
-  {
-    "title": "Office electrical maintenance",
-    "location": "Kollam",
-    "description": "Routine electrical maintenance for small office setup.",
-    "category": "Electrician",
-  },
+    phone: "+91 9876543210",
+  ),
+  Job(
+    id: 2,
+    title: "AC service & repair technician",
+    category: "Electrician",
+    location: "Kochi",
+    description: "Split AC servicing and gas refill required.",
+    phone: "+91 9876543211",
+  ),
+  Job(
+    id: 3,
+    title: "Office electrical maintenance",
+    category: "Electrician",
+    location: "Kollam",
+    description: "Routine electrical maintenance for small office setup.",
+    phone: "+91 9876543212",
+  ),
 ];
 
 /* ---------------- JOB CARD ---------------- */
 
 class JobCard extends StatelessWidget {
-  final Map<String, String> job;
+  final Job job;
 
   const JobCard({super.key, required this.job});
 
@@ -104,7 +111,7 @@ class JobCard extends StatelessWidget {
         children: [
           // Job title
           Text(
-            job["title"]!,
+            job.title,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
 
@@ -118,7 +125,7 @@ class JobCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              job["category"]!,
+              job.category,
               style: const TextStyle(fontSize: 12, color: Colors.blue),
             ),
           ),
@@ -130,10 +137,7 @@ class JobCard extends StatelessWidget {
             children: [
               const Icon(Icons.location_on, size: 16, color: Colors.grey),
               const SizedBox(width: 4),
-              Text(
-                job["location"]!,
-                style: const TextStyle(color: Colors.grey),
-              ),
+              Text(job.location, style: const TextStyle(color: Colors.grey)),
             ],
           ),
 
@@ -141,7 +145,7 @@ class JobCard extends StatelessWidget {
 
           // Description
           Text(
-            job["description"]!,
+            job.description ?? 'No description available',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 14),

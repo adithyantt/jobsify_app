@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/job_service.dart';
+
 class AddJobScreen extends StatefulWidget {
   const AddJobScreen({super.key});
 
@@ -17,6 +19,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _aboutController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   // Dropdown value
   String _selectedCategory = "Plumber";
@@ -123,12 +126,26 @@ class _AddJobScreenState extends State<AddJobScreen> {
   }
 
   // 🔹 SUBMIT (UI only for now)
-  void _submit() {
-    // Later this will call backend POST /jobs
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Profile created (UI only)")));
-    Navigator.pop(context);
+  void _submit() async {
+    try {
+      await JobService.createJob(
+        title: _nameController.text,
+        category: _selectedCategory,
+        description: _aboutController.text,
+        location: _locationController.text,
+        phone: _phoneController.text,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Job posted successfully")));
+
+      Navigator.pop(context, true); // important
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to post job")));
+    }
   }
 
   // ---------- UI HELPERS ----------
