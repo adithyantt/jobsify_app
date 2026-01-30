@@ -4,6 +4,7 @@ import '../profile/profile_screen.dart';
 import '../jobs/find_job_screen.dart';
 import '../workers/find_workers_screen.dart';
 import '../jobs/jobs_home_screen.dart';
+import '../../services/user_session.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -98,7 +99,7 @@ class HomeContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -223,7 +224,7 @@ class HomeContent extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 10,
                         offset: const Offset(0, 6),
                       ),
@@ -376,7 +377,7 @@ class JobCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFF1B0C6D).withOpacity(0.1),
+            backgroundColor: const Color(0xFF1B0C6D).withValues(alpha: 0.1),
             child: Icon(icon, color: const Color(0xFF1B0C6D), size: 20),
           ),
           const SizedBox(width: 12),
@@ -502,11 +503,17 @@ class AppDrawer extends StatelessWidget {
               backgroundColor: Colors.white,
               child: Icon(Icons.person, size: 36, color: Color(0xFF1B0C6D)),
             ),
-            accountName: const Text(
-              "Guest User",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            accountName: ValueListenableBuilder<String?>(
+              valueListenable: UserSession.userNameNotifier,
+              builder: (context, name, _) => Text(
+                name ?? "User",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-            accountEmail: const Text("guest@jobsify.app"),
+            accountEmail: ValueListenableBuilder<String?>(
+              valueListenable: UserSession.userEmailNotifier,
+              builder: (context, email, _) => Text(email ?? ""),
+            ),
           ),
 
           // 🔹 MENU ITEMS
@@ -567,7 +574,7 @@ BoxDecoration commonCardDecoration() {
     borderRadius: BorderRadius.circular(14),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.05),
+        color: Colors.black.withValues(alpha: 0.05),
         blurRadius: 8,
         offset: const Offset(0, 4),
       ),
