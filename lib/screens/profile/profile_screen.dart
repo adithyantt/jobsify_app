@@ -1,115 +1,145 @@
 import 'package:flutter/material.dart';
-import '../jobs/post_job_screen.dart';
+import '../../services/user_session.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  // Temporary role flag (later from backend)
-  final bool isProvider = true;
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+    final role = UserSession.role ?? "user";
 
-      appBar: AppBar(title: const Text("Profile")),
+    // Use ValueListenableBuilder to reflect live changes to the logged-in user
+    return ValueListenableBuilder<String?>(
+      valueListenable: UserSession.userNameNotifier,
+      builder: (context, nameValue, _) {
+        final name = nameValue ?? "User";
+        final email = UserSession.email ?? "";
 
-      body: Column(
-        children: [
-          // User header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
-              ],
-            ),
+        return Scaffold(
+          backgroundColor: Colors.grey.shade100,
+          appBar: AppBar(title: const Text("My Profile"), centerTitle: true),
+          body: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Adithyan T T",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "adithyan@email.com",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  "Role: Job Provider",
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w500,
+              children: [
+                // 🔵 PROFILE HEADER (Justdial style)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  decoration: const BoxDecoration(color: Color(0xFF1B0C6D)),
+                  child: Column(
+                    children: [
+                      const CircleAvatar(
+                        radius: 42,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.person,
+                          size: 48,
+                          color: Color(0xFF1B0C6D),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(email, style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 6),
+                      Text(
+                        role == "admin" ? "Administrator" : "Jobsify User",
+                        style: const TextStyle(
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
 
-          const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-          // Action list
-          Expanded(
-            child: ListView(
-              children: [
-                _ProfileTile(
-                  icon: Icons.work_outline,
-                  title: "My Jobs",
+                // 🔹 PROFILE OPTIONS
+                _ProfileCard(icon: Icons.edit, title: "Edit Profile", onTap: () {}),
+                _ProfileCard(
+                  icon: Icons.history,
+                  title: "My Activity",
                   onTap: () {},
                 ),
-
-                if (isProvider)
-                  _ProfileTile(
-                    icon: Icons.add_circle_outline,
-                    title: "Post a Job",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PostJobScreen(),
-                        ),
-                      );
-                    },
-                  ),
-
-                _ProfileTile(
+                _ProfileCard(icon: Icons.settings, title: "Settings", onTap: () {}),
+                _ProfileCard(
+                  icon: Icons.help_outline,
+                  title: "Help & Support",
+                  onTap: () {},
+                ),
+                _ProfileCard(
                   icon: Icons.logout,
                   title: "Logout",
-                  onTap: () {
-                    // later: logout logic
+                  isLogout: true,
+                  onTap: () async {
+                    // Clear session and cached name
+                    UserSession.clear();
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('user_name');
+
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                    );
                   },
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
+
+    // ValueListenableBuilder returns the scaffold above; no fallback needed here.
   }
 }
 
-class _ProfileTile extends StatelessWidget {
+class _ProfileCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool isLogout;
 
-  const _ProfileTile({
+  const _ProfileCard({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.isLogout = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Card(
+        elevation: 1.5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: isLogout ? Colors.red : const Color(0xFF1B0C6D),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: isLogout ? Colors.red : Colors.black,
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onTap,
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,6 +13,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
   bool isLoading = false;
   bool showPassword = false;
 
@@ -52,11 +54,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 40),
 
               _inputField(label: "Full name", controller: nameController),
-
               const SizedBox(height: 20),
 
               _inputField(label: "Email", controller: emailController),
-
               const SizedBox(height: 20),
 
               _inputField(
@@ -65,15 +65,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 isPassword: true,
                 showPassword: showPassword,
                 onToggle: () {
-                  setState(() {
-                    showPassword = !showPassword;
-                  });
+                  setState(() => showPassword = !showPassword);
                 },
               ),
 
               const SizedBox(height: 30),
 
-              // ✅ SIGN UP BUTTON (BACKEND CONNECTED)
+              // ✅ REGISTER (REAL BACKEND)
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -101,33 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // 🚧 GOOGLE SIGN UP (DUMMY FOR NOW)
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE3DCFF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Google sign-in coming soon"),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    "SIGN UP WITH GOOGLE",
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 24),
 
               Row(
@@ -136,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const Text("Already have an account? "),
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacementNamed(context, '/login');
                     },
                     child: const Text(
                       "Sign in",
@@ -155,6 +126,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // 🔐 REAL REGISTER (NO ROLE)
+  Future<void> _registerUser() async {
+    final error = _validateFields();
+    if (error != null) {
+      _showSnack(error);
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final success = await AuthService.registerUser(
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        // Persist the name locally so it can be shown after redirecting to login
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_name', nameController.text.trim());
+
+        _showSnack("Registration successful. Please login.");
+        Navigator.pushReplacementNamed(context, '/login');
+      } else {
+        _showSnack("Registration failed");
+      }
+    } catch (_) {
+      _showSnack("Unable to connect to server");
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
   String? _validateFields() {
     if (nameController.text.trim().length < 3) {
       return "Name must be at least 3 characters";
@@ -168,52 +175,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return null;
   }
 
-  Future<void> _registerUser() async {
-    final error = _validateFields();
-    if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final success = await AuthService.registerUser(
-        name: nameController.text.trim(),
-        email: emailController.text.trim(),
-        password: passwordController.text,
-        role: "seeker",
-      );
-
-      if (!mounted) return;
-
-      if (success) {
-        nameController.clear();
-        emailController.clear();
-        passwordController.clear();
-
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Registration failed")));
-      }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Something went wrong")));
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _inputField({

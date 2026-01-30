@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../admin/admin_dashboard.dart';
+import '../../services/user_session.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
   bool isLoading = false;
   bool showPassword = false;
 
@@ -65,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               SizedBox(
                 width: double.infinity,
@@ -121,49 +125,73 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔹 LOGIN FUNCTION
+  // 🔐 REAL LOGIN WITH BACKEND
   Future<void> _loginUser() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
     final error = _validateFields();
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      _showSnack(error);
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
-    try {
-      final success = await AuthService.loginUser(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-      );
+    final result = await AuthService.loginUser(
+      email: email,
+      password: password,
+    );
 
-      if (!mounted) return;
+    setState(() => isLoading = false);
 
-      if (success) {
-        Navigator.pushReplacementNamed(context, '/home');
+    if (result == null) {
+      _showSnack("Invalid email or password");
+      return;
+    }
+
+    final role = result['role'];
+
+    // Use returned name if present
+    String? nameFromApi = result['name'];
+    if (nameFromApi != null && nameFromApi.isNotEmpty) {
+      UserSession.userName = nameFromApi;
+      // persist latest
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_name', nameFromApi);
+    }
+
+    // If API didn't provide name, try to fetch profile endpoint (best-effort)
+    if (nameFromApi == null || nameFromApi.isEmpty) {
+      final profile = await AuthService.fetchProfile(email: result['email']);
+      if (profile != null && profile['name'] != null && profile['name'].toString().isNotEmpty) {
+        UserSession.userName = profile['name'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_name', profile['name']);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid email or password")),
-        );
+        // Fallback to cached name from registration
+        final prefs = await SharedPreferences.getInstance();
+        final cachedName = prefs.getString('user_name');
+        if (cachedName != null && cachedName.isNotEmpty) {
+          UserSession.userName = cachedName;
+        }
       }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
+    }
+
+    UserSession.email = result['email'];
+    UserSession.role = role;
+
+    if (role == "admin") {
+      Navigator.pushReplacement(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Something went wrong")));
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+      );
+    } else {
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
+  // ✅ Input validation
   String? _validateFields() {
     if (!emailController.text.contains("@")) {
       return "Enter a valid email address";
@@ -172,6 +200,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return "Password must be at least 6 characters";
     }
     return null;
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _inputField({
@@ -192,8 +226,6 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: label == "Email"
               ? TextInputType.emailAddress
               : TextInputType.text,
-          enableSuggestions: !isPassword,
-          autocorrect: !isPassword,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
