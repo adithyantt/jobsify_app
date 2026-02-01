@@ -2,32 +2,25 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String baseUrl = "http://10.192.124.105:8000";
+  // static const String baseUrl = "http://10.137.141.105:8000";
+  static const String baseUrl = "http://172.22.39.105:8000"; //A06  hotsopt
 
+  // OR use http://localhost:8000 for emulator
+
+  // ✅ REGISTER
   static Future<bool> registerUser({
     required String name,
     required String email,
     required String password,
-    required String role,
   }) async {
     try {
-      final url = Uri.parse("$baseUrl/auth/register");
-
       final response = await http.post(
-        url,
+        Uri.parse("$baseUrl/auth/register"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "name": name,
-          "email": email,
-          "password": password,
-          "role": role,
-        }),
+        body: jsonEncode({"name": name, "email": email, "password": password}),
       );
 
-      // 👇 THESE 2 LINES ARE VERY IMPORTANT
-      print("REGISTER STATUS CODE: ${response.statusCode}");
-      print("REGISTER RESPONSE BODY: ${response.body}");
-
+      print("REGISTER RESPONSE: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {
       print("REGISTER ERROR: $e");
@@ -35,26 +28,45 @@ class AuthService {
     }
   }
 
-  static Future<bool> loginUser({
+  // ✅ LOGIN (RETURN ROLE)
+  static Future<Map<String, dynamic>?> loginUser({
     required String email,
     required String password,
   }) async {
     try {
-      final url = Uri.parse("$baseUrl/auth/login");
-
       final response = await http.post(
-        url,
+        Uri.parse("$baseUrl/auth/login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );
 
-      print("LOGIN STATUS CODE: ${response.statusCode}");
-      print("LOGIN RESPONSE BODY: ${response.body}");
+      print("LOGIN RESPONSE: ${response.body}");
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
     } catch (e) {
       print("LOGIN ERROR: $e");
-      return false;
+      return null;
+    }
+  }
+
+  // ✅ FETCH LATEST PROFILE (optional; backend may expose this endpoint)
+  static Future<Map<String, dynamic>?> fetchProfile({required String email}) async {
+    try {
+      final uri = Uri.parse("$baseUrl/auth/profile?email=$email");
+      final response = await http.get(uri, headers: {"Content-Type": "application/json"});
+
+      print("PROFILE RESPONSE: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print("PROFILE ERROR: $e");
+      return null;
     }
   }
 }
