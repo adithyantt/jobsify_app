@@ -1,179 +1,193 @@
 import 'package:flutter/material.dart';
-import 'job_detail_screen.dart';
 import '../../models/job_model.dart';
+import 'job_detail_screen.dart';
+
+/// COLORS (UI ONLY)
+const Color kRed = Color(0xFFFF1E2D);
 
 class JobsListScreen extends StatelessWidget {
   final String category;
 
   const JobsListScreen({super.key, required this.category});
 
+  /// 🔹 BACKEND-SAFE FALLBACK JOBS
+  List<Map<String, dynamic>> get jobs => [
+    {
+      "category": "Plumber",
+      "title": "Need Plumber for Kitchen Repair",
+      "desc": "Kitchen sink and pipe repair needed urgently.",
+      "location": "Sector 15, Delhi",
+      "time": "Posted 2 hours ago",
+      "salary": "₹800-1000/day",
+      "urgent": true,
+      "verified": true,
+      "phone": "+91 98765 43210",
+    },
+    {
+      "category": "Painter",
+      "title": "House Painting Work",
+      "desc": "3 BHK apartment painting work required.",
+      "location": "Green Park, Mumbai",
+      "time": "Posted 5 hours ago",
+      "salary": "₹15,000 (complete work)",
+      "urgent": false,
+      "verified": true,
+      "phone": "+91 99887 66554",
+    },
+  ];
+
+  List<Map<String, dynamic>> get filteredJobs {
+    if (category == "All") return jobs;
+    return jobs.where((j) => j["category"] == category).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
 
+      /// 🔴 APP BAR (SIMPLE & CLEAN)
       appBar: AppBar(
+        backgroundColor: kRed,
+        elevation: 0,
         title: Text(category),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              // later: filters
-            },
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
 
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Result count
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              "${dummyJobs.length} jobs available",
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-            ),
-          ),
-
-          // Job list
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: dummyJobs.length,
-              itemBuilder: (context, index) {
-                return JobCard(job: dummyJobs[index]);
+      body: filteredJobs.isEmpty
+          ? const Center(
+              child: Text(
+                "No jobs found",
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: filteredJobs.length,
+              itemBuilder: (_, i) {
+                final job = filteredJobs[i];
+                return _jobCard(context, job);
               },
             ),
-          ),
-        ],
+    );
+  }
+
+  /// 🧾 JOB CARD (MATCHES BROWSE JOBS)
+  Widget _jobCard(BuildContext context, Map<String, dynamic> job) {
+    final jobObj = Job.fromJson(job);
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => JobDetailScreen(job: jobObj)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// TAGS
+            Row(
+              children: [
+                _tag(job["category"], kRed),
+                if (job["urgent"]) _tag("URGENT", Colors.orange),
+                if (job["verified"]) _tag("Verified", Colors.green),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            /// TITLE
+            Text(
+              job["title"],
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+
+            const SizedBox(height: 6),
+
+            /// DESCRIPTION
+            Text(job["desc"], style: const TextStyle(color: Colors.grey)),
+
+            const SizedBox(height: 8),
+
+            /// LOCATION
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 14, color: Colors.red),
+                const SizedBox(width: 4),
+                Text(job["location"]),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+
+            /// TIME
+            Row(
+              children: [
+                const Icon(Icons.access_time, size: 14, color: Colors.red),
+                const SizedBox(width: 4),
+                Text(job["time"]),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            /// SALARY
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                job["salary"],
+                style: const TextStyle(color: Colors.green),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            /// BUTTON
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: kRed),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JobDetailScreen(job: jobObj),
+                    ),
+                  );
+                },
+                child: const Text("View Contact"),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
 
-/* ---------------- DUMMY DATA ---------------- */
-
-final List<Job> dummyJobs = [
-  Job(
-    id: 1,
-    title: "Electrician needed for house wiring",
-    category: "Electrician",
-    location: "Thiruvananthapuram",
-    description:
-        "Complete wiring work for a 2BHK house. Immediate requirement.",
-    phone: "+91 9876543210",
-  ),
-  Job(
-    id: 2,
-    title: "AC service & repair technician",
-    category: "Electrician",
-    location: "Kochi",
-    description: "Split AC servicing and gas refill required.",
-    phone: "+91 9876543211",
-  ),
-  Job(
-    id: 3,
-    title: "Office electrical maintenance",
-    category: "Electrician",
-    location: "Kollam",
-    description: "Routine electrical maintenance for small office setup.",
-    phone: "+91 9876543212",
-  ),
-];
-
-/* ---------------- JOB CARD ---------------- */
-
-class JobCard extends StatelessWidget {
-  final Job job;
-
-  const JobCard({super.key, required this.job});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _tag(String text, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
       ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Job title
-          Text(
-            job.title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Category badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              job.category,
-              style: const TextStyle(fontSize: 12, color: Colors.blue),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Location
-          Row(
-            children: [
-              const Icon(Icons.location_on, size: 16, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(job.location, style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Description
-          Text(
-            job.description ?? 'No description available',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 14),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Action button
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
-                );
-              },
-
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text("View Details"),
-            ),
-          ),
-        ],
-      ),
+      child: Text(text, style: TextStyle(color: color, fontSize: 11)),
     );
   }
 }

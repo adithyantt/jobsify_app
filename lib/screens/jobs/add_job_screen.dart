@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../services/job_service.dart';
 
 class AddJobScreen extends StatefulWidget {
@@ -10,18 +9,14 @@ class AddJobScreen extends StatefulWidget {
 }
 
 class _AddJobScreenState extends State<AddJobScreen> {
-  // Theme color (same as Home)
   static const Color primaryColor = Color(0xFF1B0C6D);
 
-  // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
   final TextEditingController _aboutController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  // Dropdown value
   String _selectedCategory = "Plumber";
 
   @override
@@ -31,128 +26,106 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
       appBar: AppBar(
         backgroundColor: primaryColor,
-        title: const Text("Create Your Profile"),
+        title: const Text("Create Worker Profile"),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
       ),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _textField("Enter your full name", controller: _nameController),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _label("Full Name"),
+            _textField("Enter your full name", controller: _nameController),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              _label("Category *"),
-              _dropdown(),
+            _label("Skill Category"),
+            _dropdown(),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              _label("Experience *"),
-              _textField("e.g., 5 years", controller: _experienceController),
+            _label("Experience"),
+            _textField("e.g., 5 years", controller: _experienceController),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              _label("Location *"),
-              _textField(
-                "Enter your location/area",
-                controller: _locationController,
-              ),
+            _label("Location"),
+            _textField("Enter your area", controller: _locationController),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              _label("Contact Number *"),
-              _textField(
-                "+91 98765 43210",
-                controller: _contactController,
-                keyboard: TextInputType.phone,
-              ),
+            _label("Contact Number"),
+            _textField(
+              "10-digit mobile number",
+              controller: _phoneController,
+              keyboard: TextInputType.phone,
+            ),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              _label("About You"),
-              _textField(
-                "Tell employers about your skills and experience",
-                controller: _aboutController,
-                maxLines: 4,
-              ),
+            _label("About You"),
+            _textField(
+              "Describe your skills and experience",
+              controller: _aboutController,
+              maxLines: 4,
+            ),
 
-              const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel"),
                   ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _submit,
-                      child: const Text("Create"),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
                     ),
+                    onPressed: _submit,
+                    child: const Text("Save Profile"),
                   ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // 🔹 SUBMIT (UI only for now)
+  /// 🔹 SUBMIT (BACKEND SAFE)
   void _submit() async {
-    if (!mounted) return; // Safety check before async operation
-
     try {
       await JobService.createJob(
-        title: _nameController.text,
+        title: _nameController.text, // reused safely
         category: _selectedCategory,
         description: _aboutController.text,
         location: _locationController.text,
         phone: _phoneController.text,
       );
 
-      // Check mounted again after async operation
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile saved successfully")),
+      );
+
+      Navigator.pop(context, true);
+    } catch (_) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Job posted successfully")));
-
-      Navigator.pop(context, true); // important
-    } catch (e) {
-      // Check mounted again after async operation
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to post job")));
+      ).showSnackBar(const SnackBar(content: Text("Failed to save profile")));
     }
   }
 
@@ -160,11 +133,8 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
   Widget _label(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 
@@ -182,10 +152,6 @@ class _AddJobScreenState extends State<AddJobScreen> {
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -212,9 +178,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
             DropdownMenuItem(value: "Driver", child: Text("Driver")),
           ],
           onChanged: (value) {
-            setState(() {
-              _selectedCategory = value!;
-            });
+            setState(() => _selectedCategory = value!);
           },
         ),
       ),
