@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../services/job_service.dart';
+import '../../services/location_service.dart';
+
+/// UI COLORS
+const Color kRed = Color(0xFFFF1E2D);
 
 class PostJobScreen extends StatefulWidget {
   const PostJobScreen({super.key});
@@ -8,114 +13,289 @@ class PostJobScreen extends StatefulWidget {
 }
 
 class _PostJobScreenState extends State<PostJobScreen> {
-  final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
-  String? _selectedCategory;
+  final TextEditingController titleCtrl = TextEditingController();
+  final TextEditingController descCtrl = TextEditingController();
+  final TextEditingController locationCtrl = TextEditingController();
+  final TextEditingController salaryCtrl = TextEditingController();
+  final TextEditingController phoneCtrl = TextEditingController();
 
-  final List<String> _categories = [
-    "Electrician",
+  String category = "Plumber";
+  bool urgent = false;
+
+  /// 🔹 LOCATION STATE
+  bool useCurrentLocation = true;
+  String? latitude;
+  String? longitude;
+  bool fetchingLocation = false;
+
+  final List<String> categories = [
     "Plumber",
-    "Carpenter",
+    "Painter",
     "Driver",
-    "Technician",
-    "Mechanic",
+    "Electrician",
+    "Carpenter",
+    "Cleaner",
   ];
+
+  @override
+  void dispose() {
+    titleCtrl.dispose();
+    descCtrl.dispose();
+    locationCtrl.dispose();
+    salaryCtrl.dispose();
+    phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  /// 📍 FETCH GPS LOCATION
+  Future<void> _getCurrentLocation() async {
+    try {
+      setState(() => fetchingLocation = true);
+
+      final loc = await LocationService.getCurrentLocation();
+
+      setState(() {
+        latitude = loc["lat"].toString();
+        longitude = loc["lng"].toString();
+        locationCtrl.text = loc["place"];
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Location error: $e")));
+    } finally {
+      setState(() => fetchingLocation = false);
+    }
+  }
+
+  /// 🚀 SUBMIT JOB
+  Future<void> _submitJob() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (useCurrentLocation && (latitude == null || longitude == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fetch your current location")),
+      );
+      return;
+    }
+
+    try {
+      await JobService.createJob(
+        title: titleCtrl.text.trim(),
+        category: category,
+        description: descCtrl.text.trim(),
+        location: locationCtrl.text.trim(),
+        phone: phoneCtrl.text.trim(),
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Job posted successfully")));
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to post job: $e")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(title: const Text("Post a Job")),
+
+      /// 🔴 APP BAR
+      appBar: AppBar(
+        backgroundColor: kRed,
+        elevation: 0,
+        title: const Text("Post a Job"),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _label("Job Title"),
-            _input(
-              controller: _titleController,
-              hint: "e.g. Electrician needed for house wiring",
-            ),
-
-            const SizedBox(height: 16),
-
-            _label("Category"),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              items: _categories
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedCategory = v),
-              decoration: const InputDecoration(
-                filled: true,
-                hintText: "Select category",
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label("Job Title"),
+              _input(
+                controller: titleCtrl,
+                hint: "e.g. Need plumber for pipe repair",
+                validator: (v) => v!.isEmpty ? "Enter job title" : null,
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            _label("Location"),
-            _input(controller: _locationController, hint: "City / Area"),
+              _label("Category"),
+              DropdownButtonFormField<String>(
+                value: category,
+                items: categories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => category = v!),
+                decoration: _fieldDecoration(),
+              ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            _label("Job Description"),
-            _input(
-              controller: _descriptionController,
-              hint: "Describe the job details",
-              maxLines: 5,
-            ),
+              _label("Job Description"),
+              _input(
+                controller: descCtrl,
+                hint: "Describe the work in detail",
+                maxLines: 4,
+                validator: (v) => v!.isEmpty ? "Enter description" : null,
+              ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _submit,
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              /// 📍 LOCATION MODE
+              _label("Location"),
+              RadioListTile<bool>(
+                title: const Text("Use my current location"),
+                value: true,
+                groupValue: useCurrentLocation,
+                onChanged: (v) {
+                  setState(() {
+                    useCurrentLocation = true;
+                    locationCtrl.clear();
+                    latitude = null;
+                    longitude = null;
+                  });
+                },
+              ),
+              RadioListTile<bool>(
+                title: const Text("Enter location manually"),
+                value: false,
+                groupValue: useCurrentLocation,
+                onChanged: (v) {
+                  setState(() {
+                    useCurrentLocation = false;
+                    latitude = null;
+                    longitude = null;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 8),
+
+              /// 📡 GPS BUTTON
+              if (useCurrentLocation)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                    ),
+                    icon: const Icon(Icons.my_location),
+                    label: Text(
+                      fetchingLocation
+                          ? "Fetching location..."
+                          : "Fetch current location",
+                    ),
+                    onPressed: fetchingLocation ? null : _getCurrentLocation,
                   ),
                 ),
-                child: const Text("Submit Job", style: TextStyle(fontSize: 16)),
+
+              /// ✍️ MANUAL LOCATION
+              if (!useCurrentLocation)
+                _input(
+                  controller: locationCtrl,
+                  hint: "Enter city / town / village",
+                  validator: (v) => v!.isEmpty ? "Enter location" : null,
+                ),
+
+              const SizedBox(height: 16),
+
+              _label("Salary / Payment"),
+              _input(controller: salaryCtrl, hint: "e.g. ₹800-1000/day"),
+
+              const SizedBox(height: 16),
+
+              _label("Contact Number"),
+              _input(
+                controller: phoneCtrl,
+                hint: "10-digit mobile number",
+                keyboardType: TextInputType.phone,
+                validator: (v) => v!.length < 10 ? "Enter valid number" : null,
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              SwitchListTile(
+                value: urgent,
+                onChanged: (v) => setState(() => urgent = v),
+                title: const Text("Mark as Urgent"),
+                activeColor: kRed,
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kRed,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _submitJob,
+                  child: const Text("Post Job", style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _submit() {
-    // v1: just show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Job submitted (pending approval)")),
+  /// 🔹 LABEL
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
-    Navigator.pop(context);
   }
 
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-  );
-
+  /// 🔹 INPUT
   Widget _input({
     required TextEditingController controller,
     required String hint,
     int maxLines = 1,
-  }) => TextField(
-    controller: controller,
-    maxLines: maxLines,
-    decoration: InputDecoration(
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: _fieldDecoration(hint: hint),
+    );
+  }
+
+  /// 🔹 DECORATION
+  InputDecoration _fieldDecoration({String? hint}) {
+    return InputDecoration(
       hintText: hint,
       filled: true,
+      fillColor: Colors.white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
-    ),
-  );
+    );
+  }
 }
