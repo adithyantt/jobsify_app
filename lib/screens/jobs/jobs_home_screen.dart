@@ -1,145 +1,120 @@
 import 'package:flutter/material.dart';
+import 'find_job_screen.dart';
+import 'post_job_screen.dart';
+
+/// 🎨 COLORS
+const Color kRed = Color(0xFFFF1E2D);
 
 class JobsHomeScreen extends StatelessWidget {
   const JobsHomeScreen({super.key});
-
-  static const Color primaryColor = Color(0xFF1B0C6D);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
 
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🔍 Search
-              _searchBar(),
+      appBar: AppBar(
+        backgroundColor: kRed,
+        title: const Text("Jobs"),
+        centerTitle: true,
+      ),
 
-              const SizedBox(height: 16),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            /// 🔍 BROWSE JOBS
+            _jobActionCard(
+              icon: Icons.search,
+              title: "Browse Jobs",
+              subtitle: "Find available local jobs near you",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+                );
+              },
+            ),
 
-              // 📌 Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+            const SizedBox(height: 16),
+
+            /// ➕ POST JOB
+            _jobActionCard(
+              icon: Icons.add_circle_outline,
+              title: "Post a Job",
+              subtitle: "Create a job and hire workers",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PostJobScreen()),
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            /// INFO TEXT
+            const Text(
+              "Use Jobs section to find work or hire skilled workers easily.",
+              style: TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 🧱 CARD WIDGET
+  Widget _jobActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: kRed.withOpacity(0.1),
+              child: Icon(icon, color: kRed, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    "Available Jobs",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Icon(Icons.filter_list, size: 18),
-                      SizedBox(width: 4),
-                      Text("Filter"),
-                    ],
-                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
-
-              const SizedBox(height: 16),
-
-              // 📄 Job list
-              Expanded(
-                child: ListView(
-                  children: const [
-                    JobTile(
-                      title: "Electrician Needed",
-                      location: "Kochi",
-                      salary: "₹900/day",
-                    ),
-                    JobTile(
-                      title: "Plumber Required",
-                      location: "Trivandrum",
-                      salary: "₹1000/day",
-                    ),
-                    JobTile(
-                      title: "Driver for Local Travel",
-                      location: "Kollam",
-                      salary: "₹1200/day",
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _searchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const TextField(
-        decoration: InputDecoration(
-          icon: Icon(Icons.search),
-          hintText: "Search jobs...",
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-}
-
-class JobTile extends StatelessWidget {
-  final String title;
-  final String location;
-  final String salary;
-
-  const JobTile({
-    super.key,
-    required this.title,
-    required this.location,
-    required this.salary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: JobsHomeScreen.primaryColor.withOpacity(0.1),
-            child: const Icon(Icons.work, color: JobsHomeScreen.primaryColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  location,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
             ),
-          ),
-          Text(
-            salary,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-            ),
-          ),
-        ],
+            const Icon(Icons.arrow_forward_ios, size: 16),
+          ],
+        ),
       ),
     );
   }
