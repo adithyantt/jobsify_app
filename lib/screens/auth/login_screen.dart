@@ -45,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xFF1B0C6D),
                 ),
               ),
+
               const SizedBox(height: 8),
               const Text(
                 "Find local jobs and manage work easily",
@@ -63,9 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 isPassword: true,
                 showPassword: showPassword,
                 onToggle: () {
-                  setState(() {
-                    showPassword = !showPassword;
-                  });
+                  setState(() => showPassword = !showPassword);
                 },
               ),
 
@@ -83,14 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: isLoading ? null : _loginUser,
                   child: isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           "LOGIN",
                           style: TextStyle(fontSize: 16, color: Colors.white),
@@ -105,9 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Text("You don't have an account yet? "),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/register');
-                    },
+                    onTap: () => Navigator.pushNamed(context, '/register'),
                     child: const Text(
                       "Sign up",
                       style: TextStyle(
@@ -125,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔐 REAL LOGIN WITH BACKEND
+  // 🔐 LOGIN
   Future<void> _loginUser() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
@@ -145,43 +135,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => isLoading = false);
 
-    if (result == null) {
-      _showSnack("Invalid email or password");
+    if (result["success"] != true) {
+      _showSnack(result["message"] ?? "Login failed");
       return;
     }
 
-    final role = result['role'];
+    final data = result["data"] as Map<String, dynamic>;
 
-    // Use returned name if present
-    String? nameFromApi = result['name'];
-    if (nameFromApi != null && nameFromApi.isNotEmpty) {
-      UserSession.userName = nameFromApi;
-      // persist latest
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', nameFromApi);
-    }
+    // ✅ STORE SESSION
+    UserSession.email = data['email'];
+    UserSession.role = data['role'];
+    UserSession.userName = data['name'];
 
-    // If API didn't provide name, try to fetch profile endpoint (best-effort)
-    if (nameFromApi == null || nameFromApi.isEmpty) {
-      final profile = await AuthService.fetchProfile(email: result['email']);
-      if (profile != null && profile['name'] != null && profile['name'].toString().isNotEmpty) {
-        UserSession.userName = profile['name'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_name', profile['name']);
-      } else {
-        // Fallback to cached name from registration
-        final prefs = await SharedPreferences.getInstance();
-        final cachedName = prefs.getString('user_name');
-        if (cachedName != null && cachedName.isNotEmpty) {
-          UserSession.userName = cachedName;
-        }
-      }
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('email', data['email']);
+    await prefs.setString('role', data['role']);
+    await prefs.setString('user_name', data['name']);
 
-    UserSession.email = result['email'];
-    UserSession.role = role;
-
-    if (role == "admin") {
+    // 🚦 REDIRECT
+    if (data['role'].toString().toLowerCase() == "admin") {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AdminDashboard()),
@@ -191,7 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ✅ Input validation
   String? _validateFields() {
     if (!emailController.text.contains("@")) {
       return "Enter a valid email address";
@@ -223,9 +194,6 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword && !showPassword,
-          keyboardType: label == "Email"
-              ? TextInputType.emailAddress
-              : TextInputType.text,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
