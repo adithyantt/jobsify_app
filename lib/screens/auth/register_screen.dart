@@ -71,7 +71,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 30),
 
-              // ✅ REGISTER (REAL BACKEND)
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -84,14 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   onPressed: isLoading ? null : _registerUser,
                   child: isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           "SIGN UP",
                           style: TextStyle(fontSize: 16, color: Colors.white),
@@ -126,7 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // 🔐 REAL REGISTER (NO ROLE)
+  /// 🔐 REGISTER USER
   Future<void> _registerUser() async {
     final error = _validateFields();
     if (error != null) {
@@ -137,7 +129,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      final success = await AuthService.registerUser(
+      final result = await AuthService.registerUser(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text,
@@ -145,17 +137,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
+      // AuthService.registerUser returns a Map with `success` and `message`.
+      final success = result["success"] == true;
+      final message = result["message"] ?? "Registration failed";
+
       if (success) {
-        // Persist the name locally so it can be shown after redirecting to login
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_name', nameController.text.trim());
 
-        _showSnack("Registration successful. Please login.");
+        _showSnack(message);
         Navigator.pushReplacementNamed(context, '/login');
       } else {
-        _showSnack("Registration failed");
+        _showSnack(message);
       }
-    } catch (_) {
+    } catch (e) {
       _showSnack("Unable to connect to server");
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -166,7 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (nameController.text.trim().length < 3) {
       return "Name must be at least 3 characters";
     }
-    if (!emailController.text.contains("@")) {
+    if (!emailController.text.trim().contains("@")) {
       return "Enter a valid email address";
     }
     if (passwordController.text.length < 6) {
@@ -196,8 +191,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword && !showPassword,
-          enableSuggestions: !isPassword,
-          autocorrect: !isPassword,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
