@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../../services/user_session.dart';
 import '../admin/admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-
               const Text(
                 "Jobsify",
                 style: TextStyle(
@@ -44,17 +42,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xFF1B0C6D),
                 ),
               ),
-
               const SizedBox(height: 8),
               const Text(
                 "Find local jobs and manage work easily",
                 style: TextStyle(color: Colors.grey),
               ),
-
               const SizedBox(height: 40),
 
               _inputField(label: "Email", controller: emailController),
-
               const SizedBox(height: 20),
 
               _inputField(
@@ -114,7 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🔐 LOGIN (JWT + OAuth2)
   Future<void> _loginUser() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
@@ -138,10 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _showSnack(result["message"] ?? "Login failed");
       return;
     }
-
-    // ✅ SAVE JWT TOKEN
-    final token = result["token"];
-    UserSession.token = token;
 
     // 🚦 TEMP ADMIN CHECK (DEV ONLY)
     if (email.toLowerCase().contains("admin")) {
