@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-
-// Splash Screen
+import 'services/user_session.dart';
+import 'services/theme_service.dart';
 import 'screens/splash/splash_screen.dart';
 
-// Auth Screens
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_screen.dart';
-
-// Home Screen
-import 'screens/home/home_screen.dart';
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await UserSession.loadSession();
+  await ThemeService.loadTheme();
   runApp(const MyApp());
 }
 
@@ -19,17 +15,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Jobsify',
-      debugShowCheckedModeBanner: false,
-
-      // Entry point of the app
-      home: const SplashScreen(),
-      // Centralized route management
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'Jobsify',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeService.lightTheme,
+          darkTheme: ThemeService.darkTheme,
+          themeMode: themeMode,
+          home: const SplashScreen(),
+        );
       },
     );
   }

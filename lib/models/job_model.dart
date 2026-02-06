@@ -7,6 +7,7 @@ class Job {
   final String phone;
   final String? latitude;
   final String? longitude;
+  final bool verified;
 
   Job({
     required this.id,
@@ -17,30 +18,20 @@ class Job {
     required this.phone,
     this.latitude,
     this.longitude,
+    required this.verified,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'],
-      title: json['title'] ?? '',
-      category: json['category'] ?? '',
-      description: json['description'] ?? '',
-      location: json['location'] ?? '',
-      phone: json['phone'] ?? '',
-      latitude: json['latitude']?.toString(),
-      longitude: json['longitude']?.toString(),
+      id: json["id"],
+      title: json["title"],
+      category: json["category"],
+      description: json["description"],
+      location: json["location"],
+      phone: json["phone"],
+      latitude: json["latitude"],
+      longitude: json["longitude"],
+      verified: json["is_verified"] ?? false,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'category': category,
-      'description': description,
-      'location': location,
-      'phone': phone,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
   }
 }

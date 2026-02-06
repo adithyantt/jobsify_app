@@ -1,6 +1,31 @@
 import 'package:flutter/material.dart';
 import '../../services/user_session.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../settings/settings_screen.dart';
+
+// 🔹 PLACEHOLDER SCREENS (we will implement later)
+class MyWorkerScreen extends StatelessWidget {
+  const MyWorkerScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("My Worker Profile")),
+      body: const Center(child: Text("Worker profile will appear here")),
+    );
+  }
+}
+
+class MyJobsScreen extends StatelessWidget {
+  const MyJobsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Jobs Posted By Me")),
+      body: const Center(child: Text("Your jobs will appear here")),
+    );
+  }
+}
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -9,7 +34,6 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final role = UserSession.role ?? "user";
 
-    // Use ValueListenableBuilder to reflect live changes to the logged-in user
     return ValueListenableBuilder<String?>(
       valueListenable: UserSession.userNameNotifier,
       builder: (context, nameValue, _) {
@@ -17,42 +41,52 @@ class ProfileScreen extends StatelessWidget {
         final email = UserSession.email ?? "";
 
         return Scaffold(
-          backgroundColor: Colors.grey.shade100,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(title: const Text("My Profile"), centerTitle: true),
           body: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔵 PROFILE HEADER (Justdial style)
+                // 🔵 PROFILE HEADER
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: const BoxDecoration(color: Color(0xFF1B0C6D)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                  ),
                   child: Column(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 42,
-                        backgroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).cardColor,
                         child: Icon(
                           Icons.person,
                           size: 48,
-                          color: Color(0xFF1B0C6D),
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(email, style: const TextStyle(color: Colors.white70)),
+                      Text(
+                        email,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary.withValues(alpha: 179),
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Text(
                         role == "admin" ? "Administrator" : "Jobsify User",
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.orangeAccent,
                           fontWeight: FontWeight.w600,
                         ),
@@ -61,16 +95,72 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // 🔹 PROFILE OPTIONS
-                _ProfileCard(icon: Icons.edit, title: "Edit Profile", onTap: () {}),
+                // 🔹 MY ACCOUNT SECTION
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "My Account",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                _ProfileCard(
+                  icon: Icons.badge,
+                  title: "I am a Worker",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyWorkerScreen()),
+                    );
+                  },
+                ),
+
+                _ProfileCard(
+                  icon: Icons.work,
+                  title: "Jobs posted by me",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyJobsScreen()),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // 🔹 GENERAL OPTIONS
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "General",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                _ProfileCard(
+                  icon: Icons.edit,
+                  title: "Edit Profile",
+                  onTap: () {},
+                ),
                 _ProfileCard(
                   icon: Icons.history,
                   title: "My Activity",
                   onTap: () {},
                 ),
-                _ProfileCard(icon: Icons.settings, title: "Settings", onTap: () {}),
+                _ProfileCard(
+                  icon: Icons.settings,
+                  title: "Settings",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    );
+                  },
+                ),
                 _ProfileCard(
                   icon: Icons.help_outline,
                   title: "Help & Support",
@@ -81,10 +171,7 @@ class ProfileScreen extends StatelessWidget {
                   title: "Logout",
                   isLogout: true,
                   onTap: () async {
-                    // Clear session and cached name
                     UserSession.clear();
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('user_name');
 
                     Navigator.pushNamedAndRemoveUntil(
                       context,
@@ -99,8 +186,6 @@ class ProfileScreen extends StatelessWidget {
         );
       },
     );
-
-    // ValueListenableBuilder returns the scaffold above; no fallback needed here.
   }
 }
 
@@ -124,19 +209,25 @@ class _ProfileCard extends StatelessWidget {
       child: Card(
         elevation: 1.5,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: Theme.of(context).cardColor,
         child: ListTile(
           leading: Icon(
             icon,
-            color: isLogout ? Colors.red : const Color(0xFF1B0C6D),
+            color: isLogout ? Colors.red : Theme.of(context).primaryColor,
           ),
           title: Text(
             title,
             style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: isLogout ? Colors.red : Colors.black,
+              color: isLogout
+                  ? Colors.red
+                  : Theme.of(context).textTheme.bodyLarge?.color,
             ),
           ),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: Theme.of(context).iconTheme.color,
+          ),
           onTap: onTap,
         ),
       ),

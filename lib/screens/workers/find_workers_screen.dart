@@ -2,35 +2,33 @@ import 'package:flutter/material.dart';
 import '../../models/worker_model.dart';
 import '../../services/worker_service.dart';
 import '../../services/location_service.dart';
-import 'worker_detail_screeen.dart';
+import 'worker_detail_screen.dart';
 import 'add_worker_screen.dart';
 
 class FindWorkersScreen extends StatefulWidget {
   const FindWorkersScreen({super.key});
-
   static const Color primaryColor = Color(0xFF1B0C6D);
+  static const Color kGreen = Color(0xFF10B981);
 
   @override
   State<FindWorkersScreen> createState() => _FindWorkersScreenState();
 }
 
 class _FindWorkersScreenState extends State<FindWorkersScreen> {
-  /// DATA
   List<Worker> allWorkers = [];
   List<Worker> visibleWorkers = [];
+  List<String> categories = ["All"];
 
-  /// STATE
   bool isLoading = true;
   bool hasError = false;
 
-  /// FILTERS
   String selectedCategory = "All";
   String searchQuery = "";
 
-  /// LOCATION
   double? userLat;
   double? userLng;
   String locationStatus = "Detecting location...";
+  bool sortByDistance = true;
 
   @override
   void initState() {
@@ -38,20 +36,14 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     _initEverything();
   }
 
-  /// 🔥 LOCATION + WORKERS
   Future<void> _initEverything() async {
     try {
       final loc = await LocationService.getCurrentLocation();
-
       userLat = loc["lat"];
       userLng = loc["lng"];
-
-      setState(() {
-        locationStatus = loc["place"]; // village / town / city
-      });
-
+      setState(() => locationStatus = loc["place"]);
       await _loadWorkers();
-    } catch (e) {
+    } catch (_) {
       setState(() {
         locationStatus = "Location permission required";
         isLoading = false;
@@ -59,18 +51,26 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     }
   }
 
-  /// 🔥 LOAD FROM BACKEND
   Future<void> _loadWorkers() async {
     try {
       final data = await WorkerService.fetchWorkers();
 
+      // 🔐 SHOW ONLY VERIFIED WORKERS
+      final verifiedWorkers = data.where((w) => w.isVerified).toList();
+
+      final roles = verifiedWorkers
+          .map((w) => w.role)
+          .where((r) => r.isNotEmpty)
+          .toSet();
+
       setState(() {
-        allWorkers = data;
+        allWorkers = verifiedWorkers;
+        categories = ["All", ...roles.toList()..sort()];
         _applyFilters();
         isLoading = false;
         hasError = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
         hasError = true;
         isLoading = false;
@@ -78,7 +78,6 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     }
   }
 
-  /// 🔥 FILTER LOGIC
   void _applyFilters() {
     List<Worker> filtered = allWorkers;
 
@@ -93,6 +92,16 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
       }).toList();
     }
 
+    if (sortByDistance && userLat != null && userLng != null) {
+      filtered.sort((a, b) {
+        final ad = _distanceToWorker(a);
+        final bd = _distanceToWorker(b);
+        if (ad == null && bd == null) return 0;
+        if (ad == null) return 1;
+        if (bd == null) return -1;
+        return ad.compareTo(bd);
+      });
+    }
     setState(() {
       visibleWorkers = filtered;
     });
@@ -101,10 +110,10 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: FindWorkersScreen.primaryColor,
+        backgroundColor: FindWorkersScreen.kGreen,
+        foregroundColor: Colors.white,
         title: const Text("Jobsify"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -118,7 +127,6 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const AddWorkerScreen()),
               );
-
               if (result == true) {
                 setState(() => isLoading = true);
                 await _loadWorkers();
@@ -127,12 +135,10 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
           ),
         ],
       ),
-
       body: _buildBody(),
     );
   }
 
-  /// 🧠 BODY STATE
   Widget _buildBody() {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -158,7 +164,6 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
-
           if (visibleWorkers.isEmpty)
             const Center(child: Text("No workers found"))
           else
@@ -168,22 +173,24 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     );
   }
 
-  /// 📍 LOCATION BAR
   Widget _locationBar() {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_on),
+          Icon(Icons.location_on, color: Theme.of(context).iconTheme.color),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               locationStatus,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.bodyLarge!.color,
+              ),
             ),
           ),
         ],
@@ -191,46 +198,47 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     );
   }
 
-  /// 🔍 SEARCH
   Widget _searchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
       ),
       child: TextField(
         onChanged: (value) {
           searchQuery = value.toLowerCase();
           _applyFilters();
+          setState(() {});
         },
-        decoration: const InputDecoration(
-          icon: Icon(Icons.search),
+        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color),
+        decoration: InputDecoration(
+          icon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
           hintText: "Search by name or skill...",
+          hintStyle: TextStyle(
+            color: Theme.of(context).textTheme.bodyMedium!.color,
+          ),
           border: InputBorder.none,
         ),
       ),
     );
   }
 
-  /// 🧩 CATEGORY FILTER
   Widget _categoryChips() {
-    final categories = ["All", "Plumber", "Painter", "Driver"];
-
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (_, index) {
           final cat = categories[index];
           final selected = cat == selectedCategory;
-
           return GestureDetector(
             onTap: () {
               selectedCategory = cat;
               _applyFilters();
+              setState(() {});
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -255,7 +263,6 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     );
   }
 
-  /// 🧑 WORKER CARD
   Widget _workerCard(Worker worker) {
     return GestureDetector(
       onTap: () {
@@ -268,60 +275,42 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: FindWorkersScreen.primaryColor,
-                  child: Text(
-                    worker.name[0],
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        worker.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Row(
-                        children: [
-                          _tag(worker.role, FindWorkersScreen.primaryColor),
-                          const SizedBox(width: 6),
-                          if (worker.isVerified) _tag("Verified", Colors.green),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              worker.name,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge!.color,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text("⭐ ${worker.rating} (${worker.reviews} reviews)"),
-            const SizedBox(height: 6),
-            Text("${worker.experience} years • ${worker.location}"),
+            Text(
+              worker.role,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium!.color,
+              ),
+            ),
+            Text(
+              "${worker.experience} years • ${worker.location}",
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium!.color,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _tag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 11, color: color)),
-    );
+  double? _distanceToWorker(Worker worker) {
+    if (userLat == null || userLng == null) return null;
+    final lat = double.tryParse(worker.latitude ?? "");
+    final lng = double.tryParse(worker.longitude ?? "");
+    if (lat == null || lng == null) return null;
+    return LocationService.distanceKm(userLat!, userLng!, lat, lng);
   }
 }

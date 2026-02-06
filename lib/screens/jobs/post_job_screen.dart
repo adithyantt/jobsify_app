@@ -107,7 +107,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       /// 🔴 APP BAR
       appBar: AppBar(
@@ -129,6 +129,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
             children: [
               _label("Job Title"),
               _input(
+                context,
                 controller: titleCtrl,
                 hint: "e.g. Need plumber for pipe repair",
                 validator: (v) => v!.isEmpty ? "Enter job title" : null,
@@ -143,13 +144,14 @@ class _PostJobScreenState extends State<PostJobScreen> {
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (v) => setState(() => category = v!),
-                decoration: _fieldDecoration(),
+                decoration: _fieldDecoration(context),
               ),
 
               const SizedBox(height: 16),
 
               _label("Job Description"),
               _input(
+                context,
                 controller: descCtrl,
                 hint: "Describe the work in detail",
                 maxLines: 4,
@@ -160,28 +162,32 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
               /// 📍 LOCATION MODE
               _label("Location"),
-              RadioListTile<bool>(
+              RadioListTile(
                 title: const Text("Use my current location"),
                 value: true,
-                groupValue: useCurrentLocation,
+                selected: useCurrentLocation,
                 onChanged: (v) {
                   setState(() {
-                    useCurrentLocation = true;
-                    locationCtrl.clear();
-                    latitude = null;
-                    longitude = null;
+                    useCurrentLocation = v ?? true;
+                    if (v == true) {
+                      locationCtrl.clear();
+                      latitude = null;
+                      longitude = null;
+                    }
                   });
                 },
               ),
-              RadioListTile<bool>(
+              RadioListTile(
                 title: const Text("Enter location manually"),
                 value: false,
-                groupValue: useCurrentLocation,
+                selected: !useCurrentLocation,
                 onChanged: (v) {
                   setState(() {
-                    useCurrentLocation = false;
-                    latitude = null;
-                    longitude = null;
+                    useCurrentLocation = v ?? false;
+                    if (v == false) {
+                      latitude = null;
+                      longitude = null;
+                    }
                   });
                 },
               ),
@@ -209,6 +215,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
               /// ✍️ MANUAL LOCATION
               if (!useCurrentLocation)
                 _input(
+                  context,
                   controller: locationCtrl,
                   hint: "Enter city / town / village",
                   validator: (v) => v!.isEmpty ? "Enter location" : null,
@@ -217,12 +224,17 @@ class _PostJobScreenState extends State<PostJobScreen> {
               const SizedBox(height: 16),
 
               _label("Salary / Payment"),
-              _input(controller: salaryCtrl, hint: "e.g. ₹800-1000/day"),
+              _input(
+                context,
+                controller: salaryCtrl,
+                hint: "e.g. ₹800-1000/day",
+              ),
 
               const SizedBox(height: 16),
 
               _label("Contact Number"),
               _input(
+                context,
                 controller: phoneCtrl,
                 hint: "10-digit mobile number",
                 keyboardType: TextInputType.phone,
@@ -235,7 +247,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
                 value: urgent,
                 onChanged: (v) => setState(() => urgent = v),
                 title: const Text("Mark as Urgent"),
-                activeColor: kRed,
+                activeThumbColor: kRed,
               ),
 
               const SizedBox(height: 24),
@@ -270,7 +282,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
   }
 
   /// 🔹 INPUT
-  Widget _input({
+  Widget _input(
+    BuildContext context, {
     required TextEditingController controller,
     required String hint,
     int maxLines = 1,
@@ -282,16 +295,16 @@ class _PostJobScreenState extends State<PostJobScreen> {
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator,
-      decoration: _fieldDecoration(hint: hint),
+      decoration: _fieldDecoration(context, hint: hint),
     );
   }
 
   /// 🔹 DECORATION
-  InputDecoration _fieldDecoration({String? hint}) {
+  InputDecoration _fieldDecoration(BuildContext context, {String? hint}) {
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Theme.of(context).cardColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,

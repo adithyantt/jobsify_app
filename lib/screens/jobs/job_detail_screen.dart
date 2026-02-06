@@ -104,10 +104,7 @@ class JobDetailScreen extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
-                  _infoRow(
-                    Icons.access_time,
-                    job.createdAt ?? "Recently posted",
-                  ),
+                  _infoRow(Icons.access_time, "Recently posted"),
                 ],
               ),
             ),
@@ -186,7 +183,7 @@ class JobDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: kRed.withOpacity(0.1),
+        color: kRed.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

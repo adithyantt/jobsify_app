@@ -5,11 +5,10 @@ import 'package:http/http.dart' as http;
 
 import '../models/job_model.dart';
 import '../utils/api_endpoints.dart';
-import '../services/user_session.dart';
 
 class JobService {
   // ===============================
-  // 🔹 GET ALL JOBS (PUBLIC)
+  // 🔹 GET ALL VERIFIED JOBS (PUBLIC)
   // ===============================
   static Future<List<Job>> fetchJobs() async {
     final uri = Uri.parse('${ApiEndpoints.baseUrl}/jobs');
@@ -18,6 +17,9 @@ class JobService {
       final response = await http
           .get(uri, headers: {"Content-Type": "application/json"})
           .timeout(const Duration(seconds: 10));
+
+      debugPrint("FETCH JOBS STATUS: ${response.statusCode}");
+      debugPrint("FETCH JOBS BODY: ${response.body}");
 
       if (response.statusCode == 200) {
         if (response.body.isEmpty || response.body == '[]') {
@@ -40,7 +42,8 @@ class JobService {
   }
 
   // ===============================
-  // 🔹 CREATE JOB (JWT REQUIRED)
+  // 🔹 CREATE JOB (PUBLIC)
+  // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
   static Future<void> createJob({
     required String title,
@@ -50,15 +53,7 @@ class JobService {
     required String phone,
     String? latitude,
     String? longitude,
-    bool urgent = false,
-    String? salary,
   }) async {
-    final token = UserSession.token;
-
-    if (token == null) {
-      throw Exception("User not logged in");
-    }
-
     final uri = Uri.parse('${ApiEndpoints.baseUrl}/jobs');
 
     final body = {
@@ -69,21 +64,19 @@ class JobService {
       "phone": phone,
       "latitude": latitude,
       "longitude": longitude,
-      "urgent": urgent,
-      "salary": salary,
     };
 
     try {
       final response = await http
           .post(
             uri,
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bearer $token", // 🔐 REQUIRED
-            },
+            headers: {"Content-Type": "application/json"},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
+
+      debugPrint("CREATE JOB STATUS: ${response.statusCode}");
+      debugPrint("CREATE JOB BODY: ${response.body}");
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception(

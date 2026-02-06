@@ -1,37 +1,43 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/worker_model.dart';
 import '../utils/api_endpoints.dart';
-import '../services/user_session.dart';
 
 class WorkerService {
   // ===============================
-  // 🔹 FETCH VERIFIED & AVAILABLE WORKERS
+  // 🔹 FETCH VERIFIED WORKERS (PUBLIC)
   // ===============================
   static Future<List<Worker>> fetchWorkers() async {
     final uri = Uri.parse("${ApiEndpoints.baseUrl}/workers");
 
-    final res = await http.get(
-      uri,
-      headers: {
-        "Content-Type": "application/json",
-        // ❗ token optional here (public endpoint)
-      },
-    );
+    try {
+      final res = await http.get(
+        uri,
+        headers: {"Content-Type": "application/json"},
+      );
 
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
-      return data.map((e) => Worker.fromJson(e)).toList();
-    } else {
-      throw Exception("Failed to load workers (${res.statusCode})");
+      debugPrint("FETCH WORKERS STATUS: ${res.statusCode}");
+      debugPrint("FETCH WORKERS BODY: ${res.body}");
+
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
+        return data.map((e) => Worker.fromJson(e)).toList();
+      } else {
+        throw Exception("Failed to load workers (${res.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("FETCH WORKERS ERROR: $e");
+      throw Exception("Fetch workers failed");
     }
   }
 
   // ===============================
-  // 🔹 CREATE WORKER (JWT REQUIRED)
+  // 🔹 CREATE WORKER (PUBLIC)
+  // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
-  static Future<bool> createWorker({
+  static Future<void> createWorker({
     required String name,
     required String role,
     required String phone,
@@ -40,18 +46,9 @@ class WorkerService {
     String? latitude,
     String? longitude,
   }) async {
-    final token = UserSession.token;
-
-    if (token == null) {
-      throw Exception("User not logged in");
-    }
-
     final res = await http.post(
-      Uri.parse("${ApiEndpoints.baseUrl}/workers"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token", // 🔐 REQUIRED
-      },
+      Uri.parse("${ApiEndpoints.baseUrl}/workers/"),
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": name,
         "role": role,
@@ -63,29 +60,25 @@ class WorkerService {
       }),
     );
 
-    return res.statusCode == 201;
+    debugPrint("CREATE WORKER STATUS: ${res.statusCode}");
+    debugPrint("CREATE WORKER BODY: ${res.body}");
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("Create worker failed (${res.statusCode})");
+    }
   }
 
   // ===============================
-  // 🔹 REPORT WORKER (JWT REQUIRED)
+  // 🔹 REPORT WORKER
   // ===============================
   static Future<void> reportWorker({
     required int workerId,
     required String reason,
-    String? description,
+    required String description,
   }) async {
-    final token = UserSession.token;
-
-    if (token == null) {
-      throw Exception("User not logged in");
-    }
-
     final res = await http.post(
-      Uri.parse(ApiEndpoints.reports),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token", // 🔐 REQUIRED
-      },
+      Uri.parse("${ApiEndpoints.baseUrl}/workers/report"),
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "worker_id": workerId,
         "reason": reason,
@@ -93,8 +86,11 @@ class WorkerService {
       }),
     );
 
-    if (res.statusCode != 201) {
-      throw Exception("Failed to submit report (${res.statusCode})");
+    debugPrint("REPORT WORKER STATUS: ${res.statusCode}");
+    debugPrint("REPORT WORKER BODY: ${res.body}");
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("Report worker failed (${res.statusCode})");
     }
   }
 }

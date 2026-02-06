@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:jobsify/models/job_model.dart';
+import '../admin_dashboard.dart';
+import '../../../utils/api_endpoints.dart';
 
 /// 🎨 COLORS
 const Color kRed = Color(0xFFFF1E2D);
@@ -15,9 +17,6 @@ class JobVerificationScreen extends StatefulWidget {
 }
 
 class _JobVerificationScreenState extends State<JobVerificationScreen> {
-  // static const String baseUrl = "http://172.22.39.105:8000";
-  static const String baseUrl = "http://10.137.141.105:8000";
-
   late Future<List<Job>> pendingJobsFuture;
 
   @override
@@ -34,7 +33,7 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
 
   /// 📡 FETCH PENDING JOBS
   Future<List<Job>> _fetchPendingJobs() async {
-    final res = await http.get(Uri.parse("$baseUrl/admin/jobs/pending"));
+    final res = await http.get(Uri.parse(ApiEndpoints.pendingJobs));
 
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
@@ -46,14 +45,18 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
 
   /// ✅ VERIFY JOB
   Future<void> _verify(int id) async {
-    await http.put(Uri.parse("$baseUrl/admin/jobs/verify/$id"));
-    if (!mounted) return;
-    _reloadJobs();
+    final res = await http.put(Uri.parse("${ApiEndpoints.approveJob}/$id"));
+
+    if (res.statusCode == 200) {
+      _reloadJobs();
+    } else {
+      debugPrint("JOB APPROVE FAILED: ${res.body}");
+    }
   }
 
   /// ❌ REJECT JOB
   Future<void> _reject(int id) async {
-    await http.delete(Uri.parse("$baseUrl/admin/jobs/$id"));
+    await http.delete(Uri.parse("${ApiEndpoints.baseUrl}/admin/jobs/$id"));
     if (!mounted) return;
     _reloadJobs();
   }
@@ -66,6 +69,14 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
       appBar: AppBar(
         title: const Text("Job Verification"),
         backgroundColor: kRed,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const AdminDashboard()),
+            );
+          },
+        ),
       ),
 
       /// 🔁 PULL TO REFRESH (FIXED)

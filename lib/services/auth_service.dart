@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../utils/api_endpoints.dart';
@@ -59,8 +60,8 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print("LOGIN STATUS CODE: ${response.statusCode}");
-      print("LOGIN RAW RESPONSE: ${response.body}");
+      debugPrint("LOGIN STATUS CODE: ${response.statusCode}");
+      debugPrint("LOGIN RAW RESPONSE: ${response.body}");
 
       final decoded = jsonDecode(response.body);
 
@@ -78,7 +79,7 @@ class AuthService {
         "message": decoded["detail"] ?? "Invalid credentials",
       };
     } catch (e) {
-      print("LOGIN ERROR: $e");
+      debugPrint("LOGIN ERROR: $e");
       return {"success": false, "message": "Unable to connect to server"};
     }
   }

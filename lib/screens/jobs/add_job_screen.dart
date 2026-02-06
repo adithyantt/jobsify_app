@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/job_service.dart';
+import '../../services/worker_service.dart';
 
 class AddJobScreen extends StatefulWidget {
   const AddJobScreen({super.key});
@@ -9,6 +9,8 @@ class AddJobScreen extends StatefulWidget {
 }
 
 class _AddJobScreenState extends State<AddJobScreen> {
+  bool _isLoading = false;
+
   static const Color primaryColor = Color(0xFF1B0C6D);
 
   final TextEditingController _nameController = TextEditingController();
@@ -22,7 +24,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
         backgroundColor: primaryColor,
@@ -39,27 +41,40 @@ class _AddJobScreenState extends State<AddJobScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _label("Full Name"),
-            _textField("Enter your full name", controller: _nameController),
+            _textField(
+              context,
+              "Enter your full name",
+              controller: _nameController,
+            ),
 
             const SizedBox(height: 16),
 
             _label("Skill Category"),
-            _dropdown(),
+            _dropdown(context),
 
             const SizedBox(height: 16),
 
             _label("Experience"),
-            _textField("e.g., 5 years", controller: _experienceController),
+            _textField(
+              context,
+              "e.g., 5 years",
+              controller: _experienceController,
+            ),
 
             const SizedBox(height: 16),
 
             _label("Location"),
-            _textField("Enter your area", controller: _locationController),
+            _textField(
+              context,
+              "Enter your area",
+              controller: _locationController,
+            ),
 
             const SizedBox(height: 16),
 
             _label("Contact Number"),
             _textField(
+              context,
               "10-digit mobile number",
               controller: _phoneController,
               keyboard: TextInputType.phone,
@@ -69,6 +84,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
             _label("About You"),
             _textField(
+              context,
               "Describe your skills and experience",
               controller: _aboutController,
               maxLines: 4,
@@ -90,7 +106,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                     ),
-                    onPressed: _submit,
+                    onPressed: _isLoading ? null : _submit,
                     child: const Text("Save Profile"),
                   ),
                 ),
@@ -104,32 +120,56 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
   /// 🔹 SUBMIT (BACKEND SAFE)
   void _submit() async {
+    // Basic validation
+    if (_nameController.text.isEmpty ||
+        _experienceController.text.isEmpty ||
+        _locationController.text.isEmpty ||
+        _phoneController.text.isEmpty) {
+      _showSnack("All fields are required.");
+      return;
+    }
+
+    final experience = int.tryParse(_experienceController.text.trim());
+    if (experience == null || experience < 0) {
+      _showSnack("Please enter a valid number for experience.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
-      await JobService.createJob(
-        title: _nameController.text, // reused safely
-        category: _selectedCategory,
-        description: _aboutController.text,
+      // This screen creates a WORKER, so we use WorkerService.
+      await WorkerService.createWorker(
+        name: _nameController.text.trim(),
+        role: _selectedCategory,
+        phone: _phoneController.text.trim(),
+        experience: experience,
         location: _locationController.text,
-        phone: _phoneController.text,
+        // latitude and longitude are not collected on this screen.
       );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile saved successfully")),
+      _showSnack(
+        "Profile saved successfully. It will be reviewed by an admin.",
       );
-
       Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to save profile")));
+      _showSnack("An error occurred: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   // ---------- UI HELPERS ----------
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Widget _label(String text) {
     return Padding(
@@ -139,6 +179,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
   }
 
   Widget _textField(
+    BuildContext context,
     String hint, {
     required TextEditingController controller,
     int maxLines = 1,
@@ -151,7 +192,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).cardColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -160,11 +201,11 @@ class _AddJobScreenState extends State<AddJobScreen> {
     );
   }
 
-  Widget _dropdown() {
+  Widget _dropdown(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(

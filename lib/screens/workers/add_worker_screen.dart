@@ -121,10 +121,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         return;
       }
 
-      /// 🔹 Decide availability boolean
-      final bool isAvailable = availabilityOption != "not_available";
-
-      final success = await WorkerService.createWorker(
+      await WorkerService.createWorker(
         name: nameCtrl.text.trim(),
         role: roleValue,
         phone: phone,
@@ -134,14 +131,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         longitude: longitude,
       );
 
-      if (success) {
-        Navigator.pop(context, true);
-      } else {
-        setState(() => loading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Failed to add worker")));
-      }
+      Navigator.pop(context, true);
     } catch (e) {
       setState(() => loading = false);
       ScaffoldMessenger.of(
@@ -239,7 +229,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
               groupValue: availabilityOption,
               onChanged: (val) {
                 setState(() {
-                  availabilityOption = val!;
+                  availabilityOption = val ?? "everyday";
                   selectedDays.clear();
                 });
               },
@@ -251,7 +241,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
               groupValue: availabilityOption,
               onChanged: (val) {
                 setState(() {
-                  availabilityOption = val!;
+                  availabilityOption = val ?? "selected_days";
                 });
               },
             ),
