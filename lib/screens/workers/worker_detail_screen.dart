@@ -3,7 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/worker_model.dart';
 import '../../services/worker_service.dart';
 
-const Color kPrimary = Color(0xFF1B0C6D);
+/// 🎨 COLORS
+const Color kRed = Color(0xFFFF1E2D);
+const Color kBlue = Color(0xFF6B7280);
+const Color kYellow = Color(0xFFFFC107);
+const Color kGreen = Color(0xFF16A34A);
+const Color kLightBlue = Color(0xFF87CEEB);
 
 class WorkerDetailScreen extends StatelessWidget {
   final Worker worker;
@@ -131,10 +136,11 @@ class WorkerDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: kPrimary,
+        backgroundColor: kLightBlue,
+        foregroundColor: Colors.white,
         title: const Text("Worker"),
         actions: [
           PopupMenuButton<String>(
@@ -158,24 +164,30 @@ class WorkerDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _tag(worker.role),
+                  _tag(context, worker.role),
                   const SizedBox(height: 12),
                   Text(
                     worker.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge!.color,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _infoRow(Icons.work, "${worker.experience} years experience"),
-                  _infoRow(Icons.location_on, worker.location),
-                  _infoRow(Icons.phone, worker.phone),
+                  _infoRow(
+                    context,
+                    Icons.work,
+                    "${worker.experience} years experience",
+                  ),
+                  _infoRow(context, Icons.location_on, worker.location),
+                  _infoRow(context, Icons.phone, worker.phone),
                   if (worker.isVerified)
                     _infoRow(
+                      context,
                       Icons.verified,
                       "Verified worker",
-                      color: kPrimary,
+                      color: Theme.of(context).primaryColor,
                     ),
                   if (worker.latitude != null && worker.longitude != null)
                     Padding(
@@ -196,7 +208,7 @@ class WorkerDetailScreen extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(color: Colors.black12, blurRadius: 8),
@@ -222,7 +234,7 @@ class WorkerDetailScreen extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimary,
+                      backgroundColor: Theme.of(context).primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -241,12 +253,17 @@ class WorkerDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String text, {Color? color}) {
+  Widget _infoRow(
+    BuildContext context,
+    IconData icon,
+    String text, {
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: color ?? kPrimary),
+          Icon(icon, size: 18, color: color ?? Theme.of(context).primaryColor),
           const SizedBox(width: 6),
           Expanded(child: Text(text)),
         ],
@@ -254,17 +271,17 @@ class WorkerDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _tag(String text) {
+  Widget _tag(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: kPrimary.withValues(alpha: 0.1),
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: kPrimary,
+        style: TextStyle(
+          color: Theme.of(context).primaryColor,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
