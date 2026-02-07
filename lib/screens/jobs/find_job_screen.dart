@@ -71,42 +71,37 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: kGreen,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text("Browse Jobs"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PostJobScreen()),
+              );
+              if (result == true) _refreshJobs();
+            },
+          ),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
           /// 🔵 HEADER
           SliverToBoxAdapter(
             child: Container(
               color: kBlue,
-              padding: const EdgeInsets.fromLTRB(16, 48, 16, 20),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Browse Jobs",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PostJobScreen(),
-                            ),
-                          );
-                          if (result == true) _refreshJobs();
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(

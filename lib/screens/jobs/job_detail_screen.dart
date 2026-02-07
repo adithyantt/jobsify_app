@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/job_model.dart';
+import '../../services/theme_service.dart';
 
 /// UI COLORS
 const Color kRed = Color(0xFFFF1E2D);
+const Color kGreen = Color(0xFF16A34A);
 
 class JobDetailScreen extends StatelessWidget {
   final Job job;
@@ -48,123 +50,136 @@ class JobDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+    return Theme(
+      data: ThemeService.darkTheme,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-      /// 🔴 APP BAR
-      appBar: AppBar(backgroundColor: kRed, title: const Text("Job Details")),
+        /// 🔴 APP BAR
+        appBar: AppBar(
+          backgroundColor: kGreen,
+          foregroundColor: Colors.white,
+          title: const Text("Job Details"),
+        ),
 
-      body: Column(
-        children: [
-          /// 🔹 CONTENT
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _tag(job.category),
+        body: Column(
+          children: [
+            /// 🔹 CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _tag(job.category),
 
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                  Text(
-                    job.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    job.description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      height: 1.4,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _infoRow(Icons.location_on, job.location),
-
-                  if (job.latitude != null && job.longitude != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        "📌 Precise location available",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade700,
-                        ),
+                    Text(
+                      job.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 10),
 
-                  _infoRow(Icons.access_time, "Recently posted"),
+                    Text(
+                      job.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _infoRow(Icons.location_on, job.location),
+
+                    if (job.latitude != null && job.longitude != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          "📌 Precise location available",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    _infoRow(Icons.access_time, "Recently posted"),
+                  ],
+                ),
+              ),
+            ),
+
+            /// 🔻 BOTTOM ACTION BAR (WITH MARGIN)
+            Container(
+              margin: const EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                24,
+              ), // 👈 bottom margin
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0x4D000000)
+                        : Colors.black12,
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  /// 📞 CALL
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.call),
+                      label: const Text("Call"),
+                      onPressed: () => _callNumber(context, job.phone),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  /// 📍 MAP
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kRed,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.location_on),
+                      label: const Text("View Location"),
+                      onPressed: () => _openMap(context),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-
-          /// 🔻 BOTTOM ACTION BAR (WITH MARGIN)
-          Container(
-            margin: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              24,
-            ), // 👈 bottom margin
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 8),
-              ],
-            ),
-            child: Row(
-              children: [
-                /// 📞 CALL
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.call),
-                    label: const Text("Call"),
-                    onPressed: () => _callNumber(context, job.phone),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                /// 📍 MAP
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kRed,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.location_on),
-                    label: const Text("View Location"),
-                    onPressed: () => _openMap(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -174,7 +189,9 @@ class JobDetailScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: kRed),
         const SizedBox(width: 6),
-        Expanded(child: Text(text)),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: Colors.white)),
+        ),
       ],
     );
   }
