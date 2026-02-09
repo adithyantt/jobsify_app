@@ -1,28 +1,468 @@
 import 'package:flutter/material.dart';
 import '../../services/user_session.dart';
+import '../../services/worker_service.dart';
+import '../../services/job_service.dart';
+import '../../models/worker_model.dart';
+import '../../models/job_model.dart';
 import '../settings/settings_screen.dart';
+import '../workers/worker_detail_screen.dart';
+import '../jobs/job_detail_screen.dart';
+import '../workers/add_worker_screen.dart';
+import '../jobs/add_job_screen.dart';
+import '../../widgets/confirm_dialog.dart';
 
-// 🔹 PLACEHOLDER SCREENS (we will implement later)
-class MyWorkerScreen extends StatelessWidget {
+// 🔹 MY WORKER SCREEN
+class MyWorkerScreen extends StatefulWidget {
   const MyWorkerScreen({super.key});
+
+  @override
+  State<MyWorkerScreen> createState() => _MyWorkerScreenState();
+}
+
+class _MyWorkerScreenState extends State<MyWorkerScreen> {
+  List<Worker> myWorkers = [];
+  bool isLoading = true;
+  bool hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyWorkers();
+  }
+
+  Future<void> _loadMyWorkers() async {
+    try {
+      final email = UserSession.email;
+      if (email == null) {
+        setState(() {
+          hasError = true;
+          isLoading = false;
+        });
+        return;
+      }
+
+      final data = await WorkerService.fetchMyWorkers(email);
+      if (!mounted) return;
+      setState(() {
+        myWorkers = data;
+        isLoading = false;
+        hasError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        hasError = true;
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("My Worker Profile")),
-      body: const Center(child: Text("Worker profile will appear here")),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : hasError
+          ? const Center(child: Text("Failed to load workers"))
+          : myWorkers.isEmpty
+          ? const Center(child: Text("No workers posted yet"))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: myWorkers.length,
+              itemBuilder: (context, index) {
+                final worker = myWorkers[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 8),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              worker.role,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          if (worker.isVerified)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                "Verified",
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        worker.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "${worker.experience} years experience • ${worker.role}",
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(worker.location),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.work, size: 14, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text("${worker.experience} years"),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        WorkerDetailScreen(worker: worker),
+                                  ),
+                                );
+                              },
+                              child: const Text("View Details"),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      AddWorkerScreen(workerToEdit: worker),
+                                ),
+                              );
+                              if (result == true) {
+                                _loadMyWorkers(); // Refresh list
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showConfirmDialog(
+                                context: context,
+                                title: "Delete Worker",
+                                message:
+                                    "Are you sure you want to delete this worker profile?",
+                                confirmText: "Delete",
+                                cancelText: "Cancel",
+                              );
+                              if (confirm == true) {
+                                try {
+                                  await WorkerService.deleteWorker(
+                                    workerId: worker.id,
+                                    userEmail: UserSession.email ?? '',
+                                  );
+                                  _loadMyWorkers(); // Refresh list
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Worker deleted successfully",
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "Error deleting worker: $e",
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }
 
-class MyJobsScreen extends StatelessWidget {
+// 🔹 MY JOBS SCREEN
+class MyJobsScreen extends StatefulWidget {
   const MyJobsScreen({super.key});
+
+  @override
+  State<MyJobsScreen> createState() => _MyJobsScreenState();
+}
+
+class _MyJobsScreenState extends State<MyJobsScreen> {
+  List<Job> myJobs = [];
+  bool isLoading = true;
+  bool hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyJobs();
+  }
+
+  Future<void> _loadMyJobs() async {
+    try {
+      final email = UserSession.email;
+      if (email == null) {
+        setState(() {
+          hasError = true;
+          isLoading = false;
+        });
+        return;
+      }
+
+      final data = await JobService.fetchMyJobs(email);
+      setState(() {
+        myJobs = data;
+        isLoading = false;
+        hasError = false;
+      });
+    } catch (e) {
+      setState(() {
+        hasError = true;
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Jobs Posted By Me")),
-      body: const Center(child: Text("Your jobs will appear here")),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : hasError
+          ? const Center(child: Text("Failed to load jobs"))
+          : myJobs.isEmpty
+          ? const Center(child: Text("No jobs posted yet"))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: myJobs.length,
+              itemBuilder: (context, index) {
+                final job = myJobs[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 8),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              job.category,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          if (job.verified)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                "Verified",
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        job.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        job.description,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(job.location),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => JobDetailScreen(job: job),
+                                  ),
+                                );
+                              },
+                              child: const Text("View Details"),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddJobScreen(jobToEdit: job),
+                                ),
+                              );
+                              if (result == true) {
+                                _loadMyJobs(); // Refresh list
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showConfirmDialog(
+                                context: context,
+                                title: "Delete Job",
+                                message:
+                                    "Are you sure you want to delete this job posting?",
+                                confirmText: "Delete",
+                                cancelText: "Cancel",
+                              );
+                              if (confirm == true) {
+                                try {
+                                  await JobService.deleteJob(
+                                    jobId: job.id,
+                                    userEmail: UserSession.email ?? '',
+                                  );
+                                  _loadMyJobs(); // Refresh list
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Job deleted successfully"),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text("Error deleting job: $e"),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }
