@@ -11,7 +11,7 @@ class JobsHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
         backgroundColor: kRed,
@@ -25,6 +25,7 @@ class JobsHomeScreen extends StatelessWidget {
           children: [
             /// 🔍 BROWSE JOBS
             _jobActionCard(
+              context,
               icon: Icons.search,
               title: "Browse Jobs",
               subtitle: "Find available local jobs near you",
@@ -40,6 +41,7 @@ class JobsHomeScreen extends StatelessWidget {
 
             /// ➕ POST JOB
             _jobActionCard(
+              context,
               icon: Icons.add_circle_outline,
               title: "Post a Job",
               subtitle: "Create a job and hire workers",
@@ -54,9 +56,13 @@ class JobsHomeScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             /// INFO TEXT
-            const Text(
+            Text(
               "Use Jobs section to find work or hire skilled workers easily.",
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -66,7 +72,8 @@ class JobsHomeScreen extends StatelessWidget {
   }
 
   /// 🧱 CARD WIDGET
-  Widget _jobActionCard({
+  Widget _jobActionCard(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -78,7 +85,7 @@ class JobsHomeScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(
@@ -92,7 +99,7 @@ class JobsHomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: kRed.withOpacity(0.1),
+              backgroundColor: kRed.withValues(alpha: 0.1),
               child: Icon(icon, color: kRed, size: 28),
             ),
             const SizedBox(width: 16),
@@ -108,7 +115,14 @@ class JobsHomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+                    ),
+                  ),
                 ],
               ),
             ),

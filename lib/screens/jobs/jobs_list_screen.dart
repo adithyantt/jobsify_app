@@ -89,7 +89,7 @@ class JobsListScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
@@ -116,7 +116,14 @@ class JobsListScreen extends StatelessWidget {
             const SizedBox(height: 6),
 
             /// DESCRIPTION
-            Text(job["desc"], style: const TextStyle(color: Colors.grey)),
+            Text(
+              job["desc"],
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+              ),
+            ),
 
             const SizedBox(height: 8),
 
@@ -184,7 +191,7 @@ class JobsListScreen extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: TextStyle(color: color, fontSize: 11)),

@@ -1,85 +1,203 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../admin_dashboard.dart';
+import '../../../models/worker_model.dart';
+import '../../../utils/api_endpoints.dart';
+import '../../../services/user_session.dart';
 
-class ProviderVerificationScreen extends StatelessWidget {
+const Color kGreen = Color(0xFF16A34A);
+const Color kRed = Color(0xFFFF1E2D);
+
+class ProviderVerificationScreen extends StatefulWidget {
   const ProviderVerificationScreen({super.key});
+
+  @override
+  State<ProviderVerificationScreen> createState() =>
+      _ProviderVerificationScreenState();
+}
+
+class _ProviderVerificationScreenState
+    extends State<ProviderVerificationScreen> {
+  late Future<List<Worker>> pendingWorkersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reloadWorkers();
+  }
+
+  void _reloadWorkers() {
+    pendingWorkersFuture = _fetchPendingWorkers();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleAvailability(int id, bool value) async {
+    await http.patch(
+      Uri.parse(
+        "${ApiEndpoints.baseUrl}/workers/$id/availability?available=$value",
+      ),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
+
+    _reloadWorkers();
+  }
+
+  Future<List<Worker>> _fetchPendingWorkers() async {
+    final res = await http.get(
+      Uri.parse(ApiEndpoints.pendingWorkers),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+      return data.map((e) => Worker.fromJson(e)).toList();
+    }
+    throw Exception("Failed to load workers");
+  }
+
+  Future<void> _verify(int id) async {
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.approveWorker}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (res.statusCode == 200) {
+      _reloadWorkers();
+    } else {
+      debugPrint("WORKER APPROVE FAILED: ${res.body}");
+    }
+  }
+
+  Future<void> _reject(int id) async {
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.deleteWorker}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (res.statusCode == 200) {
+      _reloadWorkers();
+    } else {
+      debugPrint("WORKER REJECT FAILED: ${res.body}");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: 4, // dummy providers for now
-        itemBuilder: (context, index) {
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      appBar: AppBar(
+        title: const Text("Worker Verification"),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const AdminDashboard()),
+            );
+          },
+        ),
+      ),
+      body: FutureBuilder<List<Worker>>(
+        future: pendingWorkersFuture,
+        builder: (_, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text(snapshot.error.toString()));
+          }
+
+          final workers = snapshot.data!;
+          if (workers.isEmpty) {
+            return const Center(child: Text("No pending workers 🎉"));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: workers.length,
+            itemBuilder: (_, i) {
+              final w = workers[i];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const CircleAvatar(radius: 22, child: Icon(Icons.person)),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "Ramesh Kumar",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                      Text(
+                        w.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${w.role} • ${w.location}",
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 6),
+                      Text("📞 ${w.phone}"),
+                      Text("🧰 ${w.experience} years experience"),
+
+                      if (w.isVerified) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text("Available"),
+                            const SizedBox(width: 8),
+                            Switch(
+                              value: w.isAvailable,
+                              onChanged: (value) =>
+                                  _toggleAvailability(w.id, value),
+                              activeThumbColor: kGreen,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kGreen,
+                              ),
+                              onPressed: () => _verify(w.id),
+                              child: const Text("Verify"),
                             ),
                           ),
-                          Text(
-                            "Electrician",
-                            style: TextStyle(color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => _reject(w.id),
+                              child: const Text("Reject"),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 10),
-
-                  const Text("📞 Phone: 9XXXXXXXXX"),
-                  const Text("📍 Location: Trivandrum"),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton.icon(
-                        icon: const Icon(Icons.close, color: Colors.red),
-                        label: const Text(
-                          "Reject",
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        onPressed: () {
-                          // later: reject provider API
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text("Approve"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                        onPressed: () {
-                          // later: approve provider API
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),

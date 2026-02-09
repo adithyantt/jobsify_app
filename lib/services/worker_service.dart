@@ -1,37 +1,43 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/worker_model.dart';
 import '../utils/api_endpoints.dart';
-import '../services/user_session.dart';
 
 class WorkerService {
   // ===============================
-  // 🔹 FETCH VERIFIED & AVAILABLE WORKERS
+  // 🔹 FETCH VERIFIED WORKERS (PUBLIC)
   // ===============================
   static Future<List<Worker>> fetchWorkers() async {
-    final uri = Uri.parse("${ApiEndpoints.baseUrl}/workers");
+    final uri = Uri.parse(ApiEndpoints.workers);
 
-    final res = await http.get(
-      uri,
-      headers: {
-        "Content-Type": "application/json",
-        // ❗ token optional here (public endpoint)
-      },
-    );
+    try {
+      final res = await http.get(
+        uri,
+        headers: {"Content-Type": "application/json"},
+      );
 
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
-      return data.map((e) => Worker.fromJson(e)).toList();
-    } else {
-      throw Exception("Failed to load workers (${res.statusCode})");
+      debugPrint("FETCH WORKERS STATUS: ${res.statusCode}");
+      debugPrint("FETCH WORKERS BODY: ${res.body}");
+
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
+        return data.map((e) => Worker.fromJson(e)).toList();
+      } else {
+        throw Exception("Failed to load workers (${res.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("FETCH WORKERS ERROR: $e");
+      throw Exception("Fetch workers failed");
     }
   }
 
   // ===============================
-  // 🔹 CREATE WORKER (JWT REQUIRED)
+  // 🔹 CREATE WORKER (PUBLIC)
+  // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
-  static Future<bool> createWorker({
+  static Future<void> createWorker({
     required String name,
     required String role,
     required String phone,
@@ -39,19 +45,11 @@ class WorkerService {
     required String location,
     String? latitude,
     String? longitude,
+    required String userEmail, // Add user email
   }) async {
-    final token = UserSession.token;
-
-    if (token == null) {
-      throw Exception("User not logged in");
-    }
-
     final res = await http.post(
-      Uri.parse("${ApiEndpoints.baseUrl}/workers"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token", // 🔐 REQUIRED
-      },
+      Uri.parse(ApiEndpoints.workers),
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "name": name,
         "role": role,
@@ -60,41 +58,144 @@ class WorkerService {
         "location": location,
         "latitude": latitude,
         "longitude": longitude,
+        "user_email": userEmail, // Add user email
       }),
     );
 
-    return res.statusCode == 201;
+    debugPrint("CREATE WORKER STATUS: ${res.statusCode}");
+    debugPrint("CREATE WORKER BODY: ${res.body}");
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("Create worker failed (${res.statusCode})");
+    }
   }
 
   // ===============================
-  // 🔹 REPORT WORKER (JWT REQUIRED)
+  // 🔹 REPORT WORKER
   // ===============================
   static Future<void> reportWorker({
     required int workerId,
     required String reason,
-    String? description,
+    required String description,
+    required String reporterEmail,
   }) async {
-    final token = UserSession.token;
-
-    if (token == null) {
-      throw Exception("User not logged in");
-    }
-
     final res = await http.post(
-      Uri.parse(ApiEndpoints.reports),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token", // 🔐 REQUIRED
-      },
+      Uri.parse("${ApiEndpoints.baseUrl}/workers/report"),
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "worker_id": workerId,
         "reason": reason,
         "description": description,
+        "reporter_email": reporterEmail,
       }),
     );
 
-    if (res.statusCode != 201) {
-      throw Exception("Failed to submit report (${res.statusCode})");
+    debugPrint("REPORT WORKER STATUS: ${res.statusCode}");
+    debugPrint("REPORT WORKER BODY: ${res.body}");
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("Report worker failed (${res.statusCode})");
+    }
+  }
+
+  // ===============================
+  // 🔹 FETCH MY WORKERS (USER-SPECIFIC)
+  // ===============================
+
+  static Future<List<Worker>> fetchMyWorkers(String email) async {
+    final uri = Uri.parse('${ApiEndpoints.myWorkers}?email=$email');
+
+    try {
+      final res = await http.get(
+        uri,
+        headers: {"Content-Type": "application/json"},
+      );
+
+      debugPrint("FETCH MY WORKERS STATUS: ${res.statusCode}");
+      debugPrint("FETCH MY WORKERS BODY: ${res.body}");
+
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
+        return data.map((e) => Worker.fromJson(e)).toList();
+      } else {
+        throw Exception("Failed to load my workers (${res.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("FETCH MY WORKERS ERROR: $e");
+      throw Exception("Fetch my workers failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 UPDATE WORKER
+  // ===============================
+  static Future<void> updateWorker({
+    required int workerId,
+    required String name,
+    required String role,
+    required String phone,
+    required int experience,
+    required String location,
+    String? latitude,
+    String? longitude,
+    required String userEmail,
+  }) async {
+    final uri = Uri.parse('${ApiEndpoints.workers}/$workerId?email=$userEmail');
+
+    final body = {
+      "name": name,
+      "role": role,
+      "phone": phone,
+      "experience": experience,
+      "location": location,
+      "latitude": latitude,
+      "longitude": longitude,
+      "user_email": userEmail,
+    };
+
+    try {
+      final res = await http.put(
+        uri,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      debugPrint("UPDATE WORKER STATUS: ${res.statusCode}");
+      debugPrint("UPDATE WORKER BODY: ${res.body}");
+
+      if (res.statusCode != 200) {
+        throw Exception("Update worker failed (${res.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("UPDATE WORKER ERROR: $e");
+      throw Exception("Update worker failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 DELETE WORKER
+  // ===============================
+  static Future<void> deleteWorker({
+    required int workerId,
+    required String userEmail,
+  }) async {
+    final uri = Uri.parse('${ApiEndpoints.workers}/$workerId?email=$userEmail');
+
+    try {
+      final res = await http.delete(
+        uri,
+        headers: {"Content-Type": "application/json"},
+      );
+
+      debugPrint("DELETE WORKER STATUS: ${res.statusCode}");
+      debugPrint("DELETE WORKER BODY: ${res.body}");
+
+      if (res.statusCode != 200) {
+        throw Exception("Delete worker failed (${res.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("DELETE WORKER ERROR: $e");
+      throw Exception("Delete worker failed");
     }
   }
 }

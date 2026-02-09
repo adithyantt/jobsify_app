@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_drawer.dart';
 import '../../utils/api_endpoints.dart';
+import '../../services/user_session.dart';
+import '../../services/theme_service.dart';
 import 'screens/job_verification_screen.dart';
 import 'screens/provider_verification_screen.dart';
 import 'screens/reports_screen.dart';
@@ -21,25 +23,35 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int pendingJobs = 0;
-  bool isLoadingCounts = true;
+  int providers = 0;
+  int users = 0;
+  int reports = 0;
+  bool isLoadingStats = true;
 
   @override
   void initState() {
     super.initState();
-    _loadCounts();
+    _loadStats();
   }
 
-  Future<void> _loadCounts() async {
+  Future<void> _loadStats() async {
     try {
       final res = await http.get(
-        Uri.parse("${ApiEndpoints.baseUrl}/admin/jobs/pending"),
+        Uri.parse(ApiEndpoints.adminStats),
+        headers: {
+          "Authorization": "Bearer ${UserSession.token}",
+          "Content-Type": "application/json",
+        },
       );
       if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body);
+        final data = jsonDecode(res.body);
         if (!mounted) return;
         setState(() {
-          pendingJobs = data.length;
-          isLoadingCounts = false;
+          pendingJobs = data['pending_jobs'] ?? 0;
+          providers = data['providers'] ?? 0;
+          users = data['users'] ?? 0;
+          reports = data['reports'] ?? 0;
+          isLoadingStats = false;
         });
         return;
       }
@@ -47,12 +59,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (!mounted) return;
     setState(() {
-      isLoadingCounts = false;
+      isLoadingStats = false;
     });
   }
 
   void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    Navigator.of(context).pop();
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -60,162 +75,165 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final stats = [
       _StatItem(
         title: "Pending Jobs",
-        value: isLoadingCounts ? "..." : pendingJobs.toString(),
+        value: isLoadingStats ? "..." : pendingJobs.toString(),
         icon: Icons.pending_actions,
         color: kAccent,
         subtitle: "Awaiting review",
       ),
       _StatItem(
         title: "Providers",
-        value: "--",
+        value: isLoadingStats ? "..." : providers.toString(),
         icon: Icons.badge,
         color: const Color(0xFF0EA5E9),
         subtitle: "Verification queue",
       ),
       _StatItem(
         title: "Users",
-        value: "--",
+        value: isLoadingStats ? "..." : users.toString(),
         icon: Icons.people,
         color: const Color(0xFF22C55E),
         subtitle: "Active accounts",
       ),
       _StatItem(
         title: "Reports",
-        value: "--",
+        value: isLoadingStats ? "..." : reports.toString(),
         icon: Icons.report,
         color: const Color(0xFFF59E0B),
         subtitle: "Open tickets",
       ),
     ];
 
-    return Scaffold(
-      drawer: const AdminDrawer(),
-      appBar: AppBar(
-        backgroundColor: kPrimary,
-        title: const Text("Admin Dashboard"),
-        centerTitle: true,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF3F4FF), kSurface],
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, themeMode, _) {
+        final isDark = themeMode == ThemeMode.dark;
+        return Scaffold(
+          drawer: const AdminDrawer(),
+          appBar: AppBar(
+            backgroundColor: isDark
+                ? ThemeService.darkTheme.appBarTheme.backgroundColor
+                : kPrimary,
+            title: const Text("Admin Dashboard"),
+            centerTitle: true,
+            foregroundColor: Colors.white,
+            iconTheme: IconThemeData(color: Colors.white),
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _heroCard(context),
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  title: "Overview",
-                  subtitle: "Key signals at a glance",
-                ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final columns = width >= 900
-                        ? 4
-                        : width >= 650
-                        ? 3
-                        : width >= 420
-                        ? 2
-                        : 1;
-                    final spacing = 12.0;
-                    final cardWidth =
-                        (width - (columns - 1) * spacing) / columns;
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [const Color(0xFF121212), const Color(0xFF1E1E1E)]
+                    : [const Color(0xFFF3F4FF), kSurface],
+              ),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _heroCard(context, isDark),
+                    const SizedBox(height: 20),
+                    _sectionTitle(
+                      title: "Overview",
+                      subtitle: "Key signals at a glance",
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final columns = 2;
+                        final spacing = 12.0;
+                        final cardWidth =
+                            (width - (columns - 1) * spacing) / columns;
 
-                    return Wrap(
-                      spacing: spacing,
-                      runSpacing: spacing,
-                      children: [
-                        for (final item in stats)
-                          SizedBox(width: cardWidth, child: _statCard(item)),
-                      ],
-                    );
-                  },
+                        return Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: [
+                            for (final item in stats)
+                              SizedBox(
+                                width: cardWidth,
+                                child: _statCard(item, isDark),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _sectionTitle(
+                      title: "Quick Actions",
+                      subtitle: "Jump into the most used admin tasks",
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12),
+                    _actionCard(
+                      title: "Review Pending Jobs",
+                      subtitle: "Approve or reject new job posts",
+                      icon: Icons.verified,
+                      color: kAccent,
+                      onTap: () =>
+                          _open(context, const JobVerificationScreen()),
+                      isDark: isDark,
+                    ),
+                    _actionCard(
+                      title: "Verify Job Providers",
+                      subtitle: "Check new provider applications",
+                      icon: Icons.badge,
+                      color: const Color(0xFF0EA5E9),
+                      onTap: () =>
+                          _open(context, const ProviderVerificationScreen()),
+                      isDark: isDark,
+                    ),
+                    _actionCard(
+                      title: "Review Reports",
+                      subtitle: "Handle user complaints and fraud flags",
+                      icon: Icons.report,
+                      color: const Color(0xFFF59E0B),
+                      onTap: () => _open(context, const ReportsScreen()),
+                      isDark: isDark,
+                    ),
+                    _actionCard(
+                      title: "Manage Users",
+                      subtitle: "Monitor user status and access",
+                      icon: Icons.people,
+                      color: const Color(0xFF22C55E),
+                      onTap: () => _open(context, const UsersScreen()),
+                      isDark: isDark,
+                    ),
+                    _actionCard(
+                      title: "Verify Workers",
+                      subtitle: "Approve or reject worker registrations",
+                      icon: Icons.engineering,
+                      color: const Color(0xFF10B981),
+                      onTap: () =>
+                          _open(context, const ProviderVerificationScreen()),
+                      isDark: isDark,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  title: "Quick Actions",
-                  subtitle: "Jump into the most used admin tasks",
-                ),
-                const SizedBox(height: 12),
-                _actionCard(
-                  title: "Review Pending Jobs",
-                  subtitle: "Approve or reject new job posts",
-                  icon: Icons.verified,
-                  color: kAccent,
-                  onTap: () => _open(context, const JobVerificationScreen()),
-                ),
-                _actionCard(
-                  title: "Verify Job Providers",
-                  subtitle: "Check new provider applications",
-                  icon: Icons.badge,
-                  color: const Color(0xFF0EA5E9),
-                  onTap: () =>
-                      _open(context, const ProviderVerificationScreen()),
-                ),
-                _actionCard(
-                  title: "Review Reports",
-                  subtitle: "Handle user complaints and fraud flags",
-                  icon: Icons.report,
-                  color: const Color(0xFFF59E0B),
-                  onTap: () => _open(context, const ReportsScreen()),
-                ),
-                _actionCard(
-                  title: "Manage Users",
-                  subtitle: "Monitor user status and access",
-                  icon: Icons.people,
-                  color: const Color(0xFF22C55E),
-                  onTap: () => _open(context, const UsersScreen()),
-                ),
-                _actionCard(
-                  title: "Verify Workers",
-                  subtitle: "Approve or reject worker registrations",
-                  icon: Icons.engineering,
-                  color: const Color(0xFF10B981),
-                  onTap: () =>
-                      _open(context, const ProviderVerificationScreen()),
-                ),
-
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  title: "Work Queue",
-                  subtitle: "Focused tasks to keep the platform healthy",
-                ),
-                const SizedBox(height: 12),
-                _queueCard(
-                  context,
-                  title: "Pending Jobs",
-                  description: "Review job posts before they go live to users.",
-                  buttonText: "Open Verification",
-                  onTap: () => _open(context, const JobVerificationScreen()),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _heroCard(BuildContext context) {
+  Widget _heroCard(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x22000000),
+            color: isDark ? const Color(0x4D000000) : const Color(0x22000000),
             blurRadius: 10,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -224,15 +242,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   "Welcome back",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
                   "Keep the marketplace clean and trusted with fast reviews.",
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
                 ),
               ],
             ),
@@ -252,31 +276,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _sectionTitle({required String title, required String subtitle}) {
+  Widget _sectionTitle({
+    required String title,
+    required String subtitle,
+    required bool isDark,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
         const SizedBox(height: 4),
-        Text(subtitle, style: const TextStyle(color: Colors.black54)),
+        Text(
+          subtitle,
+          style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+        ),
       ],
     );
   }
 
-  Widget _statCard(_StatItem item) {
+  Widget _statCard(_StatItem item, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: isDark ? const Color(0x4D000000) : const Color(0x14000000),
             blurRadius: 8,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -295,12 +330,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 12),
           Text(
             item.value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(item.title, style: const TextStyle(color: Colors.black87)),
+          Text(
+            item.title,
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+          ),
           const SizedBox(height: 4),
-          Text(item.subtitle, style: const TextStyle(color: Colors.black54)),
+          Text(
+            item.subtitle,
+            style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+          ),
         ],
       ),
     );
@@ -312,17 +357,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: isDark ? const Color(0x4D000000) : const Color(0x14000000),
             blurRadius: 8,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -349,20 +395,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(color: Colors.black54),
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 16),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: isDark ? Colors.white70 : Colors.black54,
+              ),
             ],
           ),
         ),
@@ -376,17 +429,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required String description,
     required String buttonText,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: isDark ? const Color(0x4D000000) : const Color(0x14000000),
             blurRadius: 8,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -408,15 +462,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
                 ),
               ],
             ),

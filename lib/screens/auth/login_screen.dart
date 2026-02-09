@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../admin/admin_dashboard.dart';
+import '../../services/user_session.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -129,16 +129,24 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = false);
 
     if (result["success"] != true) {
-      _showSnack(result["message"] ?? "Login failed");
+      if (result["unverified"] == true) {
+        // Navigate to OTP verification
+        final userId = result["user_id"];
+        final userName = result["name"] ?? "User"; // Backend should return name
+        Navigator.pushNamed(
+          context,
+          '/otp-verification',
+          arguments: {'userId': userId, 'userName': userName, 'email': email},
+        );
+      } else {
+        _showSnack(result["message"] ?? "Login failed");
+      }
       return;
     }
 
-    // 🚦 TEMP ADMIN CHECK (DEV ONLY)
-    if (email.toLowerCase().contains("admin")) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminDashboard()),
-      );
+    // Check user role from session
+    if (UserSession.role == 'admin') {
+      Navigator.pushReplacementNamed(context, '/admin');
     } else {
       Navigator.pushReplacementNamed(context, '/home');
     }

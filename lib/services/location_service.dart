@@ -45,4 +45,19 @@ class LocationService {
           "Unknown location",
     };
   }
+
+  static double distanceKm(
+    double fromLat,
+    double fromLng,
+    double toLat,
+    double toLng,
+  ) {
+    final meters = Geolocator.distanceBetween(
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+    );
+    return meters / 1000.0;
+  }
 }

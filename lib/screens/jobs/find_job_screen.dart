@@ -8,6 +8,7 @@ import 'job_detail_screen.dart';
 
 /// 🎨 COLORS
 const Color kRed = Color(0xFFFF1E2D);
+const Color kBlue = Color(0xFF6B7280);
 const Color kYellow = Color(0xFFFFC107);
 const Color kGreen = Color(0xFF16A34A);
 
@@ -19,7 +20,6 @@ class FindJobsScreen extends StatefulWidget {
 }
 
 class _FindJobsScreenState extends State<FindJobsScreen> {
-  /// ✅ ALWAYS INITIALIZE THIS
   late Future<List<Job>> jobsFuture;
 
   /// 📍 USER LOCATION
@@ -42,19 +42,13 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
   @override
   void initState() {
     super.initState();
-
-    /// ✅ STEP 1: LOAD JOBS IMMEDIATELY
     jobsFuture = JobService.fetchJobs();
-
-    /// ✅ STEP 2: LOAD LOCATION SEPARATELY
     _loadUserLocation();
   }
 
-  /// 📍 LOAD USER LOCATION SAFELY
   Future<void> _loadUserLocation() async {
     try {
       final loc = await LocationService.getCurrentLocation();
-
       if (!mounted) return;
 
       setState(() {
@@ -63,11 +57,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
         locationLoaded = true;
       });
     } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        locationLoaded = false;
-      });
+      setState(() => locationLoaded = false);
     }
   }
 
@@ -80,51 +70,38 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: kGreen,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text("Browse Jobs"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PostJobScreen()),
+              );
+              if (result == true) _refreshJobs();
+            },
+          ),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
-          /// 🔴 HEADER
+          /// 🔵 HEADER
           SliverToBoxAdapter(
             child: Container(
-              color: kRed,
-              padding: const EdgeInsets.fromLTRB(16, 48, 16, 20),
+              color: kBlue,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        "Browse Jobs",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-
-                      /// ➕ ADD JOB
-                      IconButton(
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PostJobScreen(),
-                            ),
-                          );
-
-                          if (result == true) {
-                            _refreshJobs();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
                   Row(
                     children: [
                       const Icon(
@@ -141,10 +118,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
-
-                  /// 🔍 SEARCH
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: kYellow, width: 2),
@@ -185,7 +159,9 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                       selected: selected,
                       selectedColor: kRed,
                       labelStyle: TextStyle(
-                        color: selected ? Colors.white : Colors.black,
+                        color: selected
+                            ? Colors.white
+                            : Theme.of(context).textTheme.bodyLarge!.color,
                       ),
                       onSelected: (_) => setState(() => selectedCategory = c),
                     ),
@@ -212,14 +188,13 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                 return SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
-                    child: Center(child: Text(snapshot.error.toString())),
+                    child: Center(child: Text("Failed to load jobs")),
                   ),
                 );
               }
 
               List<Job> jobs = snapshot.data ?? [];
 
-              /// 🔥 SORT BY DISTANCE
               if (locationLoaded && userLat != null && userLng != null) {
                 jobs.sort((a, b) {
                   if (a.latitude == null || a.longitude == null) return 1;
@@ -243,7 +218,6 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                 });
               }
 
-              /// 🔍 FILTER
               final filtered = jobs.where((job) {
                 final categoryMatch =
                     selectedCategory == "All" ||
@@ -255,10 +229,17 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
               }).toList();
 
               if (filtered.isEmpty) {
-                return const SliverToBoxAdapter(
+                return SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: Text("No jobs found")),
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        "No jobs found",
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge!.color,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               }
@@ -276,52 +257,41 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
     );
   }
 
-  /// 🧾 JOB CARD
   Widget _jobCard(Job job) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _tag(job.category, kRed),
-              if (job.urgent) _tag("URGENT", Colors.orange),
-              if (job.verified) _tag("Verified", kGreen),
-            ],
-          ),
+          Row(children: [_tag(job.category, kRed), _tag("Verified", kGreen)]),
           const SizedBox(height: 8),
-          Text(job.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            job.title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).textTheme.bodyLarge!.color,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             job.description,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium!.color?.withValues(alpha: 153),
+            ),
           ),
           const SizedBox(height: 10),
           _iconText(Icons.location_on, job.location),
-
-          if (locationLoaded &&
-              userLat != null &&
-              userLng != null &&
-              job.latitude != null &&
-              job.longitude != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                "${DistanceUtils.calculateDistance(userLat!, userLng!, double.parse(job.latitude!), double.parse(job.longitude!)).toStringAsFixed(1)} km away",
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-
-          _iconText(Icons.access_time, job.createdAt ?? "Just now"),
+          _iconText(Icons.access_time, "Recently posted"),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -356,7 +326,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: TextStyle(color: color, fontSize: 11)),

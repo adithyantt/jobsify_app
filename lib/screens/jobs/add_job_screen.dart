@@ -1,32 +1,50 @@
 import 'package:flutter/material.dart';
 import '../../services/job_service.dart';
+import '../../services/user_session.dart';
+import '../../models/job_model.dart';
 
 class AddJobScreen extends StatefulWidget {
-  const AddJobScreen({super.key});
+  final Job? jobToEdit; // Optional job for editing
+
+  const AddJobScreen({super.key, this.jobToEdit});
 
   @override
   State<AddJobScreen> createState() => _AddJobScreenState();
 }
 
 class _AddJobScreenState extends State<AddJobScreen> {
+  bool _isLoading = false;
+
   static const Color primaryColor = Color(0xFF1B0C6D);
 
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _experienceController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _aboutController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
   String _selectedCategory = "Plumber";
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.jobToEdit != null) {
+      // Pre-fill fields for editing
+      _titleController.text = widget.jobToEdit!.title;
+      _selectedCategory = widget.jobToEdit!.category;
+      _descriptionController.text = widget.jobToEdit!.description;
+      _locationController.text = widget.jobToEdit!.location;
+      _phoneController.text = widget.jobToEdit!.phone;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
         backgroundColor: primaryColor,
-        title: const Text("Create Worker Profile"),
+        title: Text(widget.jobToEdit != null ? "Edit Job" : "Post a Job"),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -38,40 +56,45 @@ class _AddJobScreenState extends State<AddJobScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label("Full Name"),
-            _textField("Enter your full name", controller: _nameController),
+            _label("Job Title"),
+            _textField(
+              context,
+              "Enter job title",
+              controller: _titleController,
+            ),
 
             const SizedBox(height: 16),
 
-            _label("Skill Category"),
-            _dropdown(),
+            _label("Category"),
+            _dropdown(context),
 
             const SizedBox(height: 16),
 
-            _label("Experience"),
-            _textField("e.g., 5 years", controller: _experienceController),
+            _label("Description"),
+            _textField(
+              context,
+              "Describe the job",
+              controller: _descriptionController,
+              maxLines: 4,
+            ),
 
             const SizedBox(height: 16),
 
             _label("Location"),
-            _textField("Enter your area", controller: _locationController),
+            _textField(
+              context,
+              "Enter location",
+              controller: _locationController,
+            ),
 
             const SizedBox(height: 16),
 
             _label("Contact Number"),
             _textField(
+              context,
               "10-digit mobile number",
               controller: _phoneController,
               keyboard: TextInputType.phone,
-            ),
-
-            const SizedBox(height: 16),
-
-            _label("About You"),
-            _textField(
-              "Describe your skills and experience",
-              controller: _aboutController,
-              maxLines: 4,
             ),
 
             const SizedBox(height: 24),
@@ -90,8 +113,10 @@ class _AddJobScreenState extends State<AddJobScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                     ),
-                    onPressed: _submit,
-                    child: const Text("Save Profile"),
+                    onPressed: _isLoading ? null : _submit,
+                    child: Text(
+                      widget.jobToEdit != null ? "Update Job" : "Post Job",
+                    ),
                   ),
                 ),
               ],
@@ -104,32 +129,65 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
   /// 🔹 SUBMIT (BACKEND SAFE)
   void _submit() async {
+    // Basic validation
+    if (_titleController.text.isEmpty ||
+        _descriptionController.text.isEmpty ||
+        _locationController.text.isEmpty ||
+        _phoneController.text.isEmpty) {
+      _showSnack("All fields are required.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
-      await JobService.createJob(
-        title: _nameController.text, // reused safely
-        category: _selectedCategory,
-        description: _aboutController.text,
-        location: _locationController.text,
-        phone: _phoneController.text,
-      );
+      if (widget.jobToEdit != null) {
+        // Update existing job
+        await JobService.updateJob(
+          jobId: widget.jobToEdit!.id,
+          title: _titleController.text.trim(),
+          category: _selectedCategory,
+          description: _descriptionController.text.trim(),
+          location: _locationController.text.trim(),
+          phone: _phoneController.text.trim(),
+          userEmail: UserSession.email ?? '',
+        );
+      } else {
+        // Create new job
+        await JobService.createJob(
+          title: _titleController.text.trim(),
+          category: _selectedCategory,
+          description: _descriptionController.text.trim(),
+          location: _locationController.text.trim(),
+          phone: _phoneController.text.trim(),
+          userEmail: UserSession.email ?? '',
+        );
+      }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile saved successfully")),
+      _showSnack(
+        widget.jobToEdit != null
+            ? "Job updated successfully."
+            : "Job will be posted after admin approval",
       );
-
       Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to save profile")));
+      _showSnack("An error occurred: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   // ---------- UI HELPERS ----------
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Widget _label(String text) {
     return Padding(
@@ -139,6 +197,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
   }
 
   Widget _textField(
+    BuildContext context,
     String hint, {
     required TextEditingController controller,
     int maxLines = 1,
@@ -151,7 +210,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).cardColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -160,11 +219,11 @@ class _AddJobScreenState extends State<AddJobScreen> {
     );
   }
 
-  Widget _dropdown() {
+  Widget _dropdown(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(

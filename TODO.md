@@ -1,0 +1,5 @@
+- [x] Update admin_drawer.dart to use theme-aware colors for header and text
+- [x] Update reports_screen.dart to use Theme.of(context) for appBar and background
+- [x] Update users_screen.dart to use Theme.of(context) for appBar and background
+- [x] Update admin_dashboard.dart to use white text in light mode
+- [x] Update job_verification_screen.dart to use white text in light mode

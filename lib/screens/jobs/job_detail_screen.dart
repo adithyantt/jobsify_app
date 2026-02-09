@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/job_model.dart';
+import '../../services/theme_service.dart';
+import '../../services/job_service.dart';
+import '../../services/user_session.dart';
 
 /// UI COLORS
 const Color kRed = Color(0xFFFF1E2D);
+const Color kGreen = Color(0xFF16A34A);
 
 class JobDetailScreen extends StatelessWidget {
   final Job job;
@@ -17,6 +21,7 @@ class JobDetailScreen extends StatelessWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Cannot open dialer")));
@@ -40,134 +45,253 @@ class JobDetailScreen extends StatelessWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Cannot open Google Maps")));
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+  /// 🔴 REPORT MODAL (NEW)
+  void _openReportModal(BuildContext context) {
+    String selectedReason = "Fraud / Scam";
+    final descCtrl = TextEditingController();
 
-      /// 🔴 APP BAR
-      appBar: AppBar(backgroundColor: kRed, title: const Text("Job Details")),
-
-      body: Column(
-        children: [
-          /// 🔹 CONTENT
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _tag(job.category),
-
+                  const Text(
+                    "Report Job",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
 
-                  Text(
-                    job.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  ...[
+                    "Fraud / Scam",
+                    "Asking advance payment",
+                    "Fake profile",
+                    "Bad behavior",
+                    "Other",
+                  ].map(
+                    (reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedReason = value;
+                          });
+                        }
+                      },
                     ),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  Text(
-                    job.description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      height: 1.4,
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: "Additional details (optional)",
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  _infoRow(Icons.location_on, job.location),
-
-                  if (job.latitude != null && job.longitude != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        "📌 Precise location available",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                    ),
 
                   const SizedBox(height: 16),
 
-                  _infoRow(
-                    Icons.access_time,
-                    job.createdAt ?? "Recently posted",
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      await JobService.reportJob(
+                        jobId: job.id,
+                        reason: selectedReason,
+                        description: descCtrl.text.trim(),
+                        reporterEmail: UserSession.email ?? '',
+                      );
+
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Report submitted")),
+                      );
+                    },
+                    child: const Text("Submit Report"),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: ThemeService.darkTheme,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
+        /// 🔴 APP BAR
+        appBar: AppBar(
+          backgroundColor: kGreen,
+          foregroundColor: Colors.white,
+          title: const Text("Job Details"),
+          actions: [
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == "report") {
+                  _openReportModal(context);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: "report", child: Text("Report Job")),
+              ],
+            ),
+          ],
+        ),
+
+        body: Column(
+          children: [
+            /// 🔹 CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _tag(job.category),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      job.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      job.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _infoRow(Icons.location_on, job.location),
+
+                    if (job.latitude != null && job.longitude != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          "📌 Precise location available",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    _infoRow(Icons.access_time, "Recently posted"),
+                  ],
+                ),
+              ),
+            ),
+
+            /// 🔻 BOTTOM ACTION BAR (WITH MARGIN)
+            Container(
+              margin: const EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                24,
+              ), // 👈 bottom margin
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0x4D000000)
+                        : Colors.black12,
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  /// 📞 CALL
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.call),
+                      label: const Text("Call"),
+                      onPressed: () => _callNumber(context, job.phone),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  /// 📍 MAP
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kRed,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.location_on),
+                      label: const Text("View Location"),
+                      onPressed: () => _openMap(context),
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-
-          /// 🔻 BOTTOM ACTION BAR (WITH MARGIN)
-          Container(
-            margin: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              24,
-            ), // 👈 bottom margin
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 8),
-              ],
-            ),
-            child: Row(
-              children: [
-                /// 📞 CALL
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.call),
-                    label: const Text("Call"),
-                    onPressed: () => _callNumber(context, job.phone),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                /// 📍 MAP
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kRed,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.location_on),
-                    label: const Text("View Location"),
-                    onPressed: () => _openMap(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -177,7 +301,9 @@ class JobDetailScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: kRed),
         const SizedBox(width: 6),
-        Expanded(child: Text(text)),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: Colors.white)),
+        ),
       ],
     );
   }
@@ -186,7 +312,7 @@ class JobDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: kRed.withOpacity(0.1),
+        color: kRed.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

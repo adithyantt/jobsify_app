@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +15,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool isLoading = false;
   bool showPassword = false;
+
+  int? userId;
 
   @override
   void dispose() {
@@ -137,18 +138,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      // AuthService.registerUser returns a Map with `success` and `message`.
+      // AuthService.registerUser returns a Map with `success`, `message`, and `user_id`.
       final success = result["success"] == true;
       final message = result["message"] ?? "Registration failed";
 
       if (success) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_name', nameController.text.trim());
-
-        _showSnack(message);
-        Navigator.pushReplacementNamed(context, '/login');
+        userId = result["user_id"];
+        Navigator.pushNamed(
+          context,
+          '/otp-verification',
+          arguments: {
+            'userId': userId,
+            'userName': nameController.text.trim(),
+            'email': emailController.text.trim(),
+          },
+        );
       } else {
-        _showSnack(message);
+        // Check if it's an OTP resent message for existing unverified user
+        if (message.contains("OTP resent")) {
+          userId = result["user_id"];
+          Navigator.pushNamed(
+            context,
+            '/otp-verification',
+            arguments: {
+              'userId': userId,
+              'userName': nameController.text.trim(),
+              'email': emailController.text.trim(),
+            },
+          );
+        } else {
+          _showSnack(message);
+        }
       }
     } catch (e) {
       _showSnack("Unable to connect to server");
@@ -161,11 +181,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (nameController.text.trim().length < 3) {
       return "Name must be at least 3 characters";
     }
-    if (!emailController.text.trim().contains("@")) {
+    if (!RegExp(
+      r'^[^@]+@[^@]+\.[^@]+$',
+    ).hasMatch(emailController.text.trim())) {
       return "Enter a valid email address";
     }
-    if (passwordController.text.length < 6) {
-      return "Password must be at least 6 characters";
+    if (passwordController.text.length < 8 ||
+        !RegExp(
+          r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
+        ).hasMatch(passwordController.text)) {
+      return "Password must be at least 8 characters with uppercase, lowercase, and number";
     }
     return null;
   }

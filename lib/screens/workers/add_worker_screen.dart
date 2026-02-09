@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../services/worker_service.dart';
 import '../../services/location_service.dart';
+import '../../services/user_session.dart';
+import '../../models/worker_model.dart';
 
 class AddWorkerScreen extends StatefulWidget {
-  const AddWorkerScreen({super.key});
+  final Worker? workerToEdit; // Optional worker for editing
+
+  const AddWorkerScreen({super.key, this.workerToEdit});
 
   @override
   State<AddWorkerScreen> createState() => _AddWorkerScreenState();
@@ -31,6 +35,24 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
     "Other",
   ];
   String selectedRole = "Plumber";
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.workerToEdit != null) {
+      // Pre-fill fields for editing
+      nameCtrl.text = widget.workerToEdit!.name;
+      selectedRole = roles.contains(widget.workerToEdit!.role)
+          ? widget.workerToEdit!.role
+          : "Other";
+      if (selectedRole == "Other") roleCtrl.text = widget.workerToEdit!.role;
+      phoneCtrl.text = widget.workerToEdit!.phone;
+      expCtrl.text = widget.workerToEdit!.experience.toString();
+      locationCtrl.text = widget.workerToEdit!.location;
+      latitude = widget.workerToEdit!.latitude;
+      longitude = widget.workerToEdit!.longitude;
+    }
+  }
 
   /// 🔹 AVAILABILITY STATE
   String availabilityOption =
@@ -60,12 +82,14 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
     setState(() => locationLoading = true);
     try {
       final loc = await LocationService.getCurrentLocation();
+      if (!mounted) return;
       setState(() {
         locationCtrl.text = loc["place"] ?? "";
         latitude = loc["lat"]?.toString();
         longitude = loc["lng"]?.toString();
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Location error: $e")));
@@ -121,27 +145,43 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         return;
       }
 
-      /// 🔹 Decide availability boolean
-      final bool isAvailable = availabilityOption != "not_available";
-
-      final success = await WorkerService.createWorker(
-        name: nameCtrl.text.trim(),
-        role: roleValue,
-        phone: phone,
-        experience: exp,
-        location: locationCtrl.text.trim(),
-        latitude: latitude,
-        longitude: longitude,
-      );
-
-      if (success) {
-        Navigator.pop(context, true);
+      if (widget.workerToEdit != null) {
+        // Update existing worker
+        await WorkerService.updateWorker(
+          workerId: widget.workerToEdit!.id,
+          name: nameCtrl.text.trim(),
+          role: roleValue,
+          phone: phone,
+          experience: exp,
+          location: locationCtrl.text.trim(),
+          latitude: latitude,
+          longitude: longitude,
+          userEmail: UserSession.email ?? '',
+        );
       } else {
-        setState(() => loading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Failed to add worker")));
+        // Create new worker
+        await WorkerService.createWorker(
+          name: nameCtrl.text.trim(),
+          role: roleValue,
+          phone: phone,
+          experience: exp,
+          location: locationCtrl.text.trim(),
+          latitude: latitude,
+          longitude: longitude,
+          userEmail: UserSession.email ?? '',
+        );
       }
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+            const SnackBar(
+              content: Text("Worker will be posted after admin approval"),
+            ),
+          )
+          .closed
+          .then((_) {
+            Navigator.pop(context, true);
+          });
     } catch (e) {
       setState(() => loading = false);
       ScaffoldMessenger.of(
@@ -181,7 +221,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
             ),
 
             if (selectedRole == "Other")
-              TextField(
+              TextFormField(
                 controller: roleCtrl,
                 decoration: const InputDecoration(labelText: "Custom role"),
               ),
@@ -239,7 +279,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
               groupValue: availabilityOption,
               onChanged: (val) {
                 setState(() {
-                  availabilityOption = val!;
+                  availabilityOption = val ?? "everyday";
                   selectedDays.clear();
                 });
               },
@@ -251,7 +291,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
               groupValue: availabilityOption,
               onChanged: (val) {
                 setState(() {
-                  availabilityOption = val!;
+                  availabilityOption = val ?? "selected_days";
                 });
               },
             ),
@@ -295,7 +335,11 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
               onPressed: loading ? null : submit,
               child: loading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Save Worker"),
+                  : Text(
+                      widget.workerToEdit != null
+                          ? "Update Worker"
+                          : "Save Worker",
+                    ),
             ),
           ],
         ),
