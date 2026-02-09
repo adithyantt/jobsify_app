@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../auth/login_screen.dart';
-import '../home/home_screen.dart';
-import '../admin/admin_dashboard.dart';
+
 import '../../services/user_session.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,27 +15,23 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    Timer(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
 
-      // Check if user is already logged in
-      if (UserSession.isLoggedIn) {
-        if (UserSession.role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
-          );
+      try {
+        // Check if user is already logged in
+        if (UserSession.isLoggedIn) {
+          if (UserSession.role == 'admin') {
+            Navigator.pushReplacementNamed(context, '/admin');
+          } else {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+          Navigator.pushReplacementNamed(context, '/login');
         }
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
+      } catch (e) {
+        // In case of any error, navigate to login
+        Navigator.pushReplacementNamed(context, '/login');
       }
     });
   }
@@ -58,10 +52,10 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.work_outline, size: 64, color: Colors.white),
-              SizedBox(height: 12),
-              Text(
+            children: [
+              const FlutterLogo(size: 64),
+              const SizedBox(height: 12),
+              const Text(
                 'Jobsify',
                 style: TextStyle(
                   color: Colors.white,
@@ -70,8 +64,8 @@ class _SplashScreenState extends State<SplashScreen> {
                   letterSpacing: 1,
                 ),
               ),
-              SizedBox(height: 6),
-              Text(
+              const SizedBox(height: 6),
+              const Text(
                 'Find Local Jobs Easily',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
