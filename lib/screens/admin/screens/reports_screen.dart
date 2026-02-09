@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../admin_dashboard.dart';
 import '../../../utils/api_endpoints.dart';
+import '../../../services/user_session.dart';
 
 const Color kPrimary = Color(0xFF1B0C6D);
 const Color kSurface = Color(0xFFF7F7FB);
@@ -26,6 +27,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<List<dynamic>> _fetchReports() async {
     final res = await http.get(
       Uri.parse("${ApiEndpoints.baseUrl}/admin/reports/pending"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     if (res.statusCode == 200) {
@@ -39,6 +44,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
       Uri.parse(
         "${ApiEndpoints.baseUrl}/admin/reports/$reportId/action?action=$action",
       ),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     setState(() {
@@ -49,13 +58,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kSurface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Reports"),
         backgroundColor: kPrimary,
+        foregroundColor: Colors.white,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const AdminDashboard()),
@@ -122,8 +132,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
-                            onPressed: () => _takeAction(r['id'], "resolve"),
-                            child: const Text("Resolve"),
+                            onPressed: () => _takeAction(r['id'], "warn"),
+                            child: const Text("Warn"),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(

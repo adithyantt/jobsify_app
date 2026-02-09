@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../admin_dashboard.dart';
 import '../../../models/worker_model.dart';
 import '../../../utils/api_endpoints.dart';
+import '../../../services/user_session.dart';
 
 const Color kGreen = Color(0xFF16A34A);
 const Color kRed = Color(0xFFFF1E2D);
@@ -23,7 +24,12 @@ class _ProviderVerificationScreenState
   @override
   void initState() {
     super.initState();
+    _reloadWorkers();
+  }
+
+  void _reloadWorkers() {
     pendingWorkersFuture = _fetchPendingWorkers();
+    if (mounted) setState(() {});
   }
 
   Future<void> _toggleAvailability(int id, bool value) async {
@@ -31,15 +37,23 @@ class _ProviderVerificationScreenState
       Uri.parse(
         "${ApiEndpoints.baseUrl}/workers/$id/availability?available=$value",
       ),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
-    setState(() {
-      pendingWorkersFuture = _fetchPendingWorkers();
-    });
+    _reloadWorkers();
   }
 
   Future<List<Worker>> _fetchPendingWorkers() async {
-    final res = await http.get(Uri.parse(ApiEndpoints.pendingWorkers));
+    final res = await http.get(
+      Uri.parse(ApiEndpoints.pendingWorkers),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
 
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
@@ -49,26 +63,34 @@ class _ProviderVerificationScreenState
   }
 
   Future<void> _verify(int id) async {
-    final res = await http.put(Uri.parse("${ApiEndpoints.approveWorker}/$id"));
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.approveWorker}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
 
     if (res.statusCode == 200) {
-      setState(() {
-        pendingWorkersFuture = _fetchPendingWorkers();
-      });
+      _reloadWorkers();
     } else {
       debugPrint("WORKER APPROVE FAILED: ${res.body}");
     }
   }
 
   Future<void> _reject(int id) async {
-    final res = await http.delete(
+    final res = await http.put(
       Uri.parse("${ApiEndpoints.deleteWorker}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     if (res.statusCode == 200) {
-      setState(() {
-        pendingWorkersFuture = _fetchPendingWorkers();
-      });
+      _reloadWorkers();
+    } else {
+      debugPrint("WORKER REJECT FAILED: ${res.body}");
     }
   }
 
@@ -78,8 +100,9 @@ class _ProviderVerificationScreenState
       appBar: AppBar(
         title: const Text("Worker Verification"),
         backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const AdminDashboard()),

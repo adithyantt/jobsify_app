@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/theme_service.dart';
+import '../../../services/user_session.dart';
 import '../admin_dashboard.dart';
 import '../../../utils/api_endpoints.dart';
 
@@ -31,7 +33,13 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<List<AdminUser>> _fetchUsers() async {
-    final res = await http.get(Uri.parse(ApiEndpoints.users));
+    final res = await http.get(
+      Uri.parse(ApiEndpoints.users),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
       return data.map((e) => AdminUser.fromJson(e)).toList();
@@ -53,20 +61,20 @@ class _UsersScreenState extends State<UsersScreen> {
     }
 
     if (!mounted) return;
-    final message =
-        res.body.isNotEmpty ? res.body : "Unable to block user";
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    final message = res.body.isNotEmpty ? res.body : "Unable to block user";
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kSurface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Users"),
-        backgroundColor: kPrimary,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Colors.white,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -101,8 +109,7 @@ class _UsersScreenState extends State<UsersScreen> {
               itemBuilder: (context, index) {
                 final user = users[index];
                 final statusLabel = user.isBlocked ? "Blocked" : "Active";
-                final statusColor =
-                    user.isBlocked ? Colors.red : Colors.green;
+                final statusColor = user.isBlocked ? Colors.red : Colors.green;
 
                 return Card(
                   elevation: 0,
@@ -118,10 +125,7 @@ class _UsersScreenState extends State<UsersScreen> {
                       children: [
                         Text(user.email),
                         const SizedBox(height: 4),
-                        Text(
-                          statusLabel,
-                          style: TextStyle(color: statusColor),
-                        ),
+                        Text(statusLabel, style: TextStyle(color: statusColor)),
                       ],
                     ),
                     isThreeLine: true,
@@ -130,9 +134,7 @@ class _UsersScreenState extends State<UsersScreen> {
                         user.isBlocked ? Icons.lock_open : Icons.block,
                         color: user.isBlocked ? Colors.grey : Colors.red,
                       ),
-                      onPressed: user.isBlocked
-                          ? null
-                          : () => _blockUser(user),
+                      onPressed: user.isBlocked ? null : () => _blockUser(user),
                     ),
                   ),
                 );

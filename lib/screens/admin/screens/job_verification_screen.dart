@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:jobsify/models/job_model.dart';
+import '../../../services/theme_service.dart';
 import '../admin_dashboard.dart';
 import '../../../utils/api_endpoints.dart';
+import '../../../services/user_session.dart';
 
 /// 🎨 COLORS
 const Color kRed = Color(0xFFFF1E2D);
@@ -33,7 +35,13 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
 
   /// 📡 FETCH PENDING JOBS
   Future<List<Job>> _fetchPendingJobs() async {
-    final res = await http.get(Uri.parse(ApiEndpoints.pendingJobs));
+    final res = await http.get(
+      Uri.parse(ApiEndpoints.pendingJobs),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
 
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
@@ -45,7 +53,13 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
 
   /// ✅ VERIFY JOB
   Future<void> _verify(int id) async {
-    final res = await http.put(Uri.parse("${ApiEndpoints.approveJob}/$id"));
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.approveJob}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
 
     if (res.statusCode == 200) {
       _reloadJobs();
@@ -56,139 +70,174 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
 
   /// ❌ REJECT JOB
   Future<void> _reject(int id) async {
-    await http.delete(Uri.parse("${ApiEndpoints.baseUrl}/admin/jobs/$id"));
-    if (!mounted) return;
-    _reloadJobs();
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.rejectJob}/$id"),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (res.statusCode == 200) {
+      _reloadJobs();
+    } else {
+      debugPrint("JOB REJECT FAILED: ${res.body}");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, themeMode, _) {
+        final isDark = themeMode == ThemeMode.dark;
+        return Scaffold(
+          backgroundColor: isDark
+              ? const Color(0xFF121212)
+              : Colors.grey.shade100,
 
-      appBar: AppBar(
-        title: const Text("Job Verification"),
-        backgroundColor: kRed,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const AdminDashboard()),
-            );
-          },
-        ),
-      ),
+          appBar: AppBar(
+            title: const Text("Job Verification"),
+            backgroundColor: isDark
+                ? ThemeService.darkTheme.appBarTheme.backgroundColor
+                : kRed,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const AdminDashboard()),
+                );
+              },
+            ),
+          ),
 
-      /// 🔁 PULL TO REFRESH (FIXED)
-      body: RefreshIndicator(
-        onRefresh: () async {
-          _reloadJobs(); // ✅ MUST be async wrapper
-        },
-        child: FutureBuilder<List<Job>>(
-          future: pendingJobsFuture,
-          builder: (_, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+          /// 🔁 PULL TO REFRESH (FIXED)
+          body: RefreshIndicator(
+            onRefresh: () async {
+              _reloadJobs(); // ✅ MUST be async wrapper
+            },
+            child: FutureBuilder<List<Job>>(
+              future: pendingJobsFuture,
+              builder: (_, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  snapshot.error.toString(),
-                  style: const TextStyle(color: Colors.red),
-                ),
-              );
-            }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      snapshot.error.toString(),
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
 
-            final jobs = snapshot.data ?? [];
+                final jobs = snapshot.data ?? [];
 
-            if (jobs.isEmpty) {
-              return const Center(child: Text("No pending jobs 🎉"));
-            }
+                if (jobs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "No pending jobs 🎉",
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  );
+                }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: jobs.length,
-              itemBuilder: (_, i) {
-                final job = jobs[i];
+                return ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: jobs.length,
+                  itemBuilder: (_, i) {
+                    final job = jobs[i];
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          job.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        Text(
-                          job.location,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        Text(
-                          job.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Row(
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.check),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: kGreen,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onPressed: () => _verify(job.id),
-                                label: const Text("Verify"),
+                            Text(
+                              job.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
 
-                            const SizedBox(width: 10),
+                            const SizedBox(height: 6),
 
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.close),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                            Text(
+                              job.location,
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.grey,
+                              ),
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            Text(
+                              job.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.check),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kGreen,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onPressed: () => _verify(job.id),
+                                    label: const Text("Verify"),
                                   ),
                                 ),
-                                onPressed: () => _reject(job.id),
-                                label: const Text("Reject"),
-                              ),
+
+                                const SizedBox(width: 10),
+
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.close),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onPressed: () => _reject(job.id),
+                                    label: const Text("Reject"),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/user_session.dart';
+import '../../services/theme_service.dart';
 import '../../widgets/confirm_dialog.dart';
 import 'admin_constants.dart';
 import 'admin_dashboard.dart';
@@ -33,10 +34,13 @@ class AdminDrawer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.blueAccent),
-              child: const Text(
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+              child: Text(
                 AdminConstants.appTitle,
-                style: TextStyle(color: Colors.white, fontSize: 20),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontSize: 20,
+                ),
               ),
             ),
             ListTile(
@@ -65,9 +69,34 @@ class AdminDrawer extends StatelessWidget {
               onTap: () => _open(context, const UsersScreen()),
             ),
             const Spacer(),
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: ThemeService.themeNotifier,
+              builder: (context, themeMode, _) {
+                final isDark = themeMode == ThemeMode.dark;
+                return ListTile(
+                  leading: Icon(
+                    isDark ? Icons.light_mode : Icons.dark_mode,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  title: Text(
+                    isDark ? 'Light Mode' : 'Dark Mode',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  onTap: () => ThemeService.toggleTheme(),
+                );
+              },
+            ),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              leading: Icon(
+                Icons.logout,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
               onTap: () async {
                 final confirmed = await showConfirmDialog(
                   context: context,
@@ -76,7 +105,7 @@ class AdminDrawer extends StatelessWidget {
                   confirmText: 'Logout',
                   cancelText: 'Cancel',
                 );
-                if (confirmed == true) {
+                if (confirmed == true && context.mounted) {
                   Navigator.of(context).pop();
                   UserSession.clear();
                   Navigator.pushNamedAndRemoveUntil(

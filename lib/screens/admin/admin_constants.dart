@@ -6,4 +6,5 @@ class AdminConstants {
   static const String providerVerification = "Provider Verification";
   static const String reports = "Reports";
   static const String users = "Users";
+  static const String apiKeyManagement = "API Key Management";
 }

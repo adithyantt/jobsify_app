@@ -1,4 +1,5 @@
-# TODO: Fix Logout in Admin Drawer
-
-- [ ] Add imports for user_session.dart and confirm_dialog.dart in admin_drawer.dart
-- [ ] Update the logout ListTile's onTap to show confirmation dialog and perform logout
+- [x] Update admin_drawer.dart to use theme-aware colors for header and text
+- [x] Update reports_screen.dart to use Theme.of(context) for appBar and background
+- [x] Update users_screen.dart to use Theme.of(context) for appBar and background
+- [x] Update admin_dashboard.dart to use white text in light mode
+- [x] Update job_verification_screen.dart to use white text in light mode
