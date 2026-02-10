@@ -531,6 +531,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   );
                 },
               );
+              if (!mounted) return;
               if (confirmed == true) {
                 UserSession.clear();
                 Navigator.pushNamedAndRemoveUntil(

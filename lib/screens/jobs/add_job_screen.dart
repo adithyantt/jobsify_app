@@ -161,6 +161,8 @@ class _AddJobScreenState extends State<AddJobScreen> {
           location: _locationController.text.trim(),
           phone: _phoneController.text.trim(),
           userEmail: UserSession.email ?? '',
+          urgent: false,
+          salary: null,
         );
       }
 

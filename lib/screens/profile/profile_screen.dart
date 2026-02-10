@@ -259,6 +259,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
   List<Job> myJobs = [];
   bool isLoading = true;
   bool hasError = false;
+  String errorMessage = "";
 
   @override
   void initState() {
@@ -267,26 +268,36 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
   }
 
   Future<void> _loadMyJobs() async {
+    setState(() {
+      isLoading = true;
+      hasError = false;
+      errorMessage = "";
+    });
+
     try {
       final email = UserSession.email;
-      if (email == null) {
+      if (email == null || email.isEmpty) {
         setState(() {
           hasError = true;
           isLoading = false;
+          errorMessage = "Please log in to view your jobs";
         });
         return;
       }
 
       final data = await JobService.fetchMyJobs(email);
+      if (!mounted) return;
       setState(() {
         myJobs = data;
         isLoading = false;
         hasError = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         hasError = true;
         isLoading = false;
+        errorMessage = e.toString();
       });
     }
   }
@@ -298,9 +309,43 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : hasError
-          ? const Center(child: Text("Failed to load jobs"))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Failed to load jobs",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      errorMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _loadMyJobs,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("Retry"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : myJobs.isEmpty
-          ? const Center(child: Text("No jobs posted yet"))
+          ? const Center(child: Text("No jobs posted by you"))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: myJobs.length,

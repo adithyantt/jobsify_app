@@ -54,6 +54,8 @@ class JobService {
     String? latitude,
     String? longitude,
     required String userEmail, // Add user email
+    bool? urgent,
+    String? salary,
   }) async {
     final uri = Uri.parse(ApiEndpoints.jobs);
 
@@ -66,6 +68,8 @@ class JobService {
       "latitude": latitude,
       "longitude": longitude,
       "user_email": userEmail, // Add user email
+      "urgent": urgent ?? false,
+      "salary": salary,
     };
 
     try {
@@ -100,7 +104,14 @@ class JobService {
   // ===============================
 
   static Future<List<Job>> fetchMyJobs(String email) async {
+    // Validate email before making request
+    if (email.isEmpty) {
+      debugPrint("FETCH MY JOBS ERROR: Email is empty");
+      throw Exception("Email is required to fetch jobs");
+    }
+
     final uri = Uri.parse('${ApiEndpoints.myJobs}?email=$email');
+    debugPrint("FETCH MY JOBS URL: $uri");
 
     try {
       final response = await http
@@ -116,17 +127,39 @@ class JobService {
         }
 
         final List<dynamic> data = jsonDecode(response.body);
-        return data
-            .map((e) => Job.fromJson(e as Map<String, dynamic>))
-            .toList();
+        debugPrint("FETCH MY JOBS: Parsing ${data.length} jobs");
+
+        final jobs = <Job>[];
+        for (var i = 0; i < data.length; i++) {
+          try {
+            final job = Job.fromJson(data[i] as Map<String, dynamic>);
+            jobs.add(job);
+          } catch (e) {
+            debugPrint("FETCH MY JOBS: Error parsing job at index $i: $e");
+            debugPrint("FETCH MY JOBS: Problematic data: ${data[i]}");
+            // Continue parsing other jobs instead of failing completely
+          }
+        }
+
+        debugPrint("FETCH MY JOBS: Successfully parsed ${jobs.length} jobs");
+        return jobs;
+      } else if (response.statusCode == 500) {
+        debugPrint("FETCH MY JOBS: Server error (500) - ${response.body}");
+        throw Exception("Server error: ${response.body}");
       }
 
-      throw Exception("Failed to load my jobs (${response.statusCode})");
+      throw Exception(
+        "Failed to load my jobs (${response.statusCode}): ${response.body}",
+      );
     } on TimeoutException {
-      throw Exception("Server timeout");
+      debugPrint("FETCH MY JOBS ERROR: Server timeout");
+      throw Exception("Server timeout - please try again");
+    } on FormatException catch (e) {
+      debugPrint("FETCH MY JOBS ERROR: JSON parsing error - $e");
+      throw Exception("Invalid data format from server");
     } catch (e) {
       debugPrint("FETCH MY JOBS ERROR: $e");
-      throw Exception("Fetch my jobs failed");
+      throw Exception("Fetch my jobs failed: $e");
     }
   }
 
