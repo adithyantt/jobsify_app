@@ -24,6 +24,18 @@ class _UsersScreenState extends State<UsersScreen> {
     _reload();
   }
 
+  // 🔐 Helper method to get auth headers safely
+  Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   void _reload() {
     usersFuture = _fetchUsers();
     if (mounted) {
@@ -34,11 +46,9 @@ class _UsersScreenState extends State<UsersScreen> {
   Future<List<AdminUser>> _fetchUsers() async {
     final res = await http.get(
       Uri.parse(ApiEndpoints.users),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
+
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
       return data.map((e) => AdminUser.fromJson(e)).toList();

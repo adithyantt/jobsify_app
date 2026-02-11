@@ -27,6 +27,18 @@ class _ProviderVerificationScreenState
     _reloadWorkers();
   }
 
+  // 🔐 Helper method to get auth headers safely
+  Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   void _reloadWorkers() {
     pendingWorkersFuture = _fetchPendingWorkers();
     if (mounted) setState(() {});
@@ -37,10 +49,7 @@ class _ProviderVerificationScreenState
       Uri.parse(
         "${ApiEndpoints.baseUrl}/workers/$id/availability?available=$value",
       ),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     _reloadWorkers();
@@ -49,10 +58,7 @@ class _ProviderVerificationScreenState
   Future<List<Worker>> _fetchPendingWorkers() async {
     final res = await http.get(
       Uri.parse(ApiEndpoints.pendingWorkers),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     if (res.statusCode == 200) {
@@ -65,10 +71,7 @@ class _ProviderVerificationScreenState
   Future<void> _verify(int id) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.approveWorker}/$id"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     if (res.statusCode == 200) {
@@ -81,10 +84,7 @@ class _ProviderVerificationScreenState
   Future<void> _reject(int id) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.deleteWorker}/$id"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     if (res.statusCode == 200) {

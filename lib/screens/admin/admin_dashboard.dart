@@ -34,15 +34,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _loadStats();
   }
 
+  // 🔐 Helper method to get auth headers safely
+  Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   Future<void> _loadStats() async {
     try {
       final res = await http.get(
         Uri.parse(ApiEndpoints.adminStats),
-        headers: {
-          "Authorization": "Bearer ${UserSession.token}",
-          "Content-Type": "application/json",
-        },
+        headers: _getAuthHeaders(),
       );
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (!mounted) return;

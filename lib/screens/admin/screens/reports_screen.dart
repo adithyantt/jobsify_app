@@ -24,31 +24,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
     reportsFuture = _fetchReports();
   }
 
+  // 🔐 Helper method to get auth headers safely
+  Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   Future<List<dynamic>> _fetchReports() async {
     final res = await http.get(
       Uri.parse("${ApiEndpoints.baseUrl}/admin/reports/pending"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     if (res.statusCode == 200) {
       return jsonDecode(res.body);
     }
-    throw Exception("Failed to load reports");
+    throw Exception("Failed to load reports (${res.statusCode}): ${res.body}");
   }
 
   Future<void> _takeAction(int reportId, String action) async {
-    await http.put(
-      Uri.parse(
-        "${ApiEndpoints.baseUrl}/admin/reports/$reportId/action?action=$action",
-      ),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+    final res = await http.put(
+      Uri.parse("${ApiEndpoints.baseUrl}/admin/reports/$reportId/action"),
+      headers: _getAuthHeaders(),
+      body: jsonEncode({"action": action}),
     );
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to take action (${res.statusCode}): ${res.body}");
+    }
 
     setState(() {
       reportsFuture = _fetchReports();
@@ -86,7 +95,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
           final reports = snapshot.data!;
           if (reports.isEmpty) {
-            return const Center(child: Text("No pending reports 🎉"));
+            return const Center(child: Text("No pending reports"));
           }
 
           return ListView.builder(
@@ -94,6 +103,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             itemCount: reports.length,
             itemBuilder: (_, i) {
               final r = reports[i];
+              final targetText = r['worker_id'] != null
+                  ? "Worker ID: ${r['worker_id']}"
+                  : "Job ID: ${r['job_id']}";
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -106,7 +118,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Worker ID: ${r['worker_id']}",
+                        targetText,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
