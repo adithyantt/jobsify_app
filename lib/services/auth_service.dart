@@ -70,6 +70,7 @@ class AuthService {
         UserSession.email = body["email"];
         UserSession.userName = body["name"];
         UserSession.role = body["role"];
+        UserSession.token = body["access_token"]; // Save JWT token
 
         return {
           "success": true,
@@ -125,6 +126,7 @@ class AuthService {
         UserSession.email = decoded["email"];
         UserSession.userName = decoded["name"];
         UserSession.role = decoded["role"];
+        UserSession.token = decoded["access_token"]; // Save the JWT token
 
         // Override role for predefined admin emails
         if (ApiConstants.adminEmails.contains(decoded["email"])) {
