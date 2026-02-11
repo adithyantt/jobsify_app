@@ -204,7 +204,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
             ),
 
             DropdownButtonFormField<String>(
-              value: selectedRole,
+              initialValue: selectedRole,
               decoration: const InputDecoration(labelText: "Role"),
               items: roles
                   .map(
