@@ -8,16 +8,25 @@ import '../utils/api_endpoints.dart';
 import '../services/user_session.dart';
 
 class AdminService {
+  // 🔐 Helper method to get auth headers safely
+  static Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   // ============================
   // 🔹 PENDING WORKERS
   // ============================
   static Future<List<Worker>> fetchPendingWorkers() async {
     final res = await http.get(
       Uri.parse(ApiEndpoints.pendingWorkers),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     debugPrint("ADMIN WORKERS STATUS: ${res.statusCode}");
@@ -37,10 +46,7 @@ class AdminService {
   static Future<void> verifyWorker(int workerId) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.approveWorker}/$workerId"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     debugPrint("VERIFY WORKER STATUS: ${res.statusCode}");
@@ -56,10 +62,7 @@ class AdminService {
   static Future<List<Job>> fetchPendingJobs() async {
     final res = await http.get(
       Uri.parse(ApiEndpoints.pendingJobs),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     debugPrint("ADMIN JOBS STATUS: ${res.statusCode}");
@@ -79,10 +82,7 @@ class AdminService {
   static Future<void> approveJob(int jobId) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.approveJob}/$jobId"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     debugPrint("APPROVE JOB STATUS: ${res.statusCode}");
@@ -98,10 +98,7 @@ class AdminService {
   static Future<void> rejectJob(int jobId) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.rejectJob}/$jobId"),
-      headers: {
-        "Authorization": "Bearer ${UserSession.token}",
-        "Content-Type": "application/json",
-      },
+      headers: _getAuthHeaders(),
     );
 
     debugPrint("REJECT JOB STATUS: ${res.statusCode}");
