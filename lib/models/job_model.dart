@@ -11,6 +11,7 @@ class Job {
   final bool urgent;
   final String? salary;
   final String? createdAt;
+  final bool isSaved;
 
   Job({
     required this.id,
@@ -25,6 +26,7 @@ class Job {
     this.urgent = false,
     this.salary,
     this.createdAt,
+    this.isSaved = false,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {

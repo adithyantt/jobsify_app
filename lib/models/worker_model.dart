@@ -9,6 +9,8 @@ class Worker {
   final String? longitude;
   final bool isVerified;
   final bool isAvailable;
+  final String? availabilityType; // everyday | selected_days | not_available
+  final String? availableDays; // Comma-separated: "Mon,Tue,Wed"
   final double? rating;
   final int? reviews;
 
@@ -23,6 +25,8 @@ class Worker {
     this.longitude,
     required this.isVerified,
     required this.isAvailable,
+    this.availabilityType,
+    this.availableDays,
     this.rating,
     this.reviews,
   });
@@ -39,6 +43,8 @@ class Worker {
       longitude: json["longitude"],
       isVerified: json["is_verified"] ?? false,
       isAvailable: json["is_available"] ?? true,
+      availabilityType: json["availability_type"],
+      availableDays: json["available_days"],
       rating: json["rating"] != null
           ? (json["rating"] as num).toDouble()
           : null,
