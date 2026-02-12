@@ -507,9 +507,11 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.bodyLarge!.color,
+              color:
+                  Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
             ),
           ),
+
           const SizedBox(height: 16),
           _infoRow(
             context,
