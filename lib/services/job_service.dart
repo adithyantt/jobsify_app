@@ -281,4 +281,133 @@ class JobService {
       throw Exception("Report job failed");
     }
   }
+
+  // ===============================
+  // 🔹 SAVE JOB
+  // ===============================
+  static Future<void> saveJob({
+    required String userEmail,
+    required int jobId,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse("${ApiEndpoints.baseUrl}/jobs/save"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"user_email": userEmail, "job_id": jobId}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      debugPrint("SAVE JOB STATUS: ${res.statusCode}");
+      debugPrint("SAVE JOB BODY: ${res.body}");
+
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        throw Exception("Save job failed (${res.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("SAVE JOB ERROR: $e");
+      throw Exception("Save job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 UNSAVE JOB
+  // ===============================
+  static Future<void> unsaveJob({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    try {
+      final res = await http
+          .delete(
+            Uri.parse(
+              "${ApiEndpoints.baseUrl}/jobs/save/$jobId?email=$userEmail",
+            ),
+            headers: {"Content-Type": "application/json"},
+          )
+          .timeout(const Duration(seconds: 20));
+
+      debugPrint("UNSAVE JOB STATUS: ${res.statusCode}");
+      debugPrint("UNSAVE JOB BODY: ${res.body}");
+
+      if (res.statusCode != 200) {
+        throw Exception("Unsave job failed (${res.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("UNSAVE JOB ERROR: $e");
+      throw Exception("Unsave job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 GET SAVED JOBS
+  // ===============================
+  static Future<List<Job>> fetchSavedJobs(String email) async {
+    try {
+      final uri = Uri.parse('${ApiEndpoints.baseUrl}/jobs/saved?email=$email');
+      debugPrint("FETCH SAVED JOBS URL: $uri");
+
+      final response = await http
+          .get(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("FETCH SAVED JOBS STATUS: ${response.statusCode}");
+      debugPrint("FETCH SAVED JOBS BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty || response.body == '[]') {
+          return [];
+        }
+
+        final List<dynamic> data = jsonDecode(response.body);
+        return data
+            .map((e) => Job.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw Exception("Failed to load saved jobs (${response.statusCode})");
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("FETCH SAVED JOBS ERROR: $e");
+      throw Exception("Fetch saved jobs failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 CHECK IF JOB IS SAVED
+  // ===============================
+  static Future<bool> checkJobSaved({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiEndpoints.baseUrl}/jobs/saved/$jobId?email=$userEmail',
+      );
+
+      final response = await http
+          .get(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("CHECK SAVED JOB STATUS: ${response.statusCode}");
+      debugPrint("CHECK SAVED JOB BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data["is_saved"] == true;
+      }
+
+      return false;
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("CHECK SAVED JOB ERROR: $e");
+      return false;
+    }
+  }
 }
