@@ -9,6 +9,8 @@ class Worker {
   final String? longitude;
   final bool isVerified;
   final bool isAvailable;
+  final double? rating;
+  final int? reviews;
 
   Worker({
     required this.id,
@@ -21,6 +23,8 @@ class Worker {
     this.longitude,
     required this.isVerified,
     required this.isAvailable,
+    this.rating,
+    this.reviews,
   });
 
   factory Worker.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,10 @@ class Worker {
       longitude: json["longitude"],
       isVerified: json["is_verified"] ?? false,
       isAvailable: json["is_available"] ?? true,
+      rating: json["rating"] != null
+          ? (json["rating"] as num).toDouble()
+          : null,
+      reviews: json["reviews"],
     );
   }
 }
