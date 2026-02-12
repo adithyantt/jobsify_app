@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/job_model.dart';
 import '../../services/job_service.dart';
 import '../../services/user_session.dart';
-import '../../widgets/star_rating.dart';
+
 import 'job_detail_screen.dart';
 
 class SavedJobsScreen extends StatefulWidget {
