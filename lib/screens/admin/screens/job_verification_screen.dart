@@ -27,18 +27,6 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
     _reloadJobs();
   }
 
-  // 🔐 Helper method to get auth headers safely
-  Map<String, String> _getAuthHeaders() {
-    final token = UserSession.token;
-    if (token == null || token.isEmpty) {
-      throw Exception("Authentication required. Please login.");
-    }
-    return {
-      "Authorization": "Bearer $token",
-      "Content-Type": "application/json",
-    };
-  }
-
   /// 🔄 RELOAD JOBS (SYNC)
   void _reloadJobs() {
     pendingJobsFuture = _fetchPendingJobs();
@@ -49,7 +37,10 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
   Future<List<Job>> _fetchPendingJobs() async {
     final res = await http.get(
       Uri.parse(ApiEndpoints.pendingJobs),
-      headers: _getAuthHeaders(),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     if (res.statusCode == 200) {
@@ -64,7 +55,10 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
   Future<void> _verify(int id) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.approveJob}/$id"),
-      headers: _getAuthHeaders(),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     if (res.statusCode == 200) {
@@ -78,7 +72,10 @@ class _JobVerificationScreenState extends State<JobVerificationScreen> {
   Future<void> _reject(int id) async {
     final res = await http.put(
       Uri.parse("${ApiEndpoints.rejectJob}/$id"),
-      headers: _getAuthHeaders(),
+      headers: {
+        "Authorization": "Bearer ${UserSession.token}",
+        "Content-Type": "application/json",
+      },
     );
 
     if (res.statusCode == 200) {
