@@ -128,6 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => isLoading = false);
 
+    if (!mounted) return;
+
     if (result["success"] != true) {
       if (result["unverified"] == true) {
         // Navigate to OTP verification

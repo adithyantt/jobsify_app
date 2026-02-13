@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../models/job_model.dart';
+import '../../utils/salary_utils.dart';
 import 'job_detail_screen.dart';
 
 /// COLORS (UI ONLY)
 const Color kRed = Color(0xFFFF1E2D);
 
-class JobsListScreen extends StatelessWidget {
+class JobsListScreen extends StatefulWidget {
   final String category;
 
   const JobsListScreen({super.key, required this.category});
+
+  @override
+  State<JobsListScreen> createState() => _JobsListScreenState();
+}
+
+class _JobsListScreenState extends State<JobsListScreen> {
+  int? minSalary;
+  int? maxSalary;
 
   /// 🔹 BACKEND-SAFE FALLBACK JOBS
   List<Map<String, dynamic>> get jobs => [
@@ -37,8 +46,18 @@ class JobsListScreen extends StatelessWidget {
   ];
 
   List<Map<String, dynamic>> get filteredJobs {
-    if (category == "All") return jobs;
-    return jobs.where((j) => j["category"] == category).toList();
+    var filtered = widget.category == "All"
+        ? jobs
+        : jobs.where((j) => j["category"] == widget.category).toList();
+
+    // Apply salary filter
+    if (minSalary != null || maxSalary != null) {
+      filtered = filtered.where((job) {
+        return SalaryUtils.isSalaryInRange(job["salary"], minSalary, maxSalary);
+      }).toList();
+    }
+
+    return filtered;
   }
 
   @override
@@ -50,11 +69,22 @@ class JobsListScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: kRed,
         elevation: 0,
-        title: Text(category),
+        title: Text(widget.category),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.filter_list,
+              color: (minSalary != null || maxSalary != null)
+                  ? Colors.white
+                  : Colors.white70,
+            ),
+            onPressed: _showFilterDialog,
+          ),
+        ],
       ),
 
       body: filteredJobs.isEmpty
@@ -195,6 +225,58 @@ class JobsListScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: TextStyle(color: color, fontSize: 11)),
+    );
+  }
+
+  void _showFilterDialog() {
+    final minCtrl = TextEditingController(text: minSalary?.toString());
+    final maxCtrl = TextEditingController(text: maxSalary?.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Filter by Salary"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: minCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "Minimum Salary (₹)",
+                hintText: "e.g., 500",
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: maxCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "Maximum Salary (₹)",
+                hintText: "e.g., 2000",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final min = int.tryParse(minCtrl.text.trim());
+              final max = int.tryParse(maxCtrl.text.trim());
+              setState(() {
+                minSalary = min;
+                maxSalary = max;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text("Apply"),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../workers/find_workers_screen.dart';
 import '../jobs/jobs_home_screen.dart';
 import '../settings/settings_screen.dart';
 import '../notifications_screen.dart';
+import '../jobs/saved_jobs_screen.dart';
 import '../../services/user_session.dart';
 
 /// 🎨 PROFESSIONAL COLORS (UI ONLY)
@@ -474,7 +475,18 @@ class _AppDrawerState extends State<AppDrawer> {
               );
             },
           ),
-          _drawerItem(context, Icons.bookmark_border, "Saved Items"),
+          _drawerItem(
+            context,
+            Icons.bookmark_border,
+            "Saved Items",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SavedJobsScreen()),
+              );
+            },
+          ),
           _drawerItem(
             context,
             Icons.notifications_none,
@@ -531,6 +543,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   );
                 },
               );
+              if (!mounted) return;
               if (confirmed == true) {
                 UserSession.clear();
                 Navigator.pushNamedAndRemoveUntil(

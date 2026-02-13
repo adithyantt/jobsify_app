@@ -54,6 +54,8 @@ class JobService {
     String? latitude,
     String? longitude,
     required String userEmail, // Add user email
+    bool? urgent,
+    String? salary,
   }) async {
     final uri = Uri.parse(ApiEndpoints.jobs);
 
@@ -66,6 +68,8 @@ class JobService {
       "latitude": latitude,
       "longitude": longitude,
       "user_email": userEmail, // Add user email
+      "urgent": urgent ?? false,
+      "salary": salary,
     };
 
     try {
@@ -100,7 +104,14 @@ class JobService {
   // ===============================
 
   static Future<List<Job>> fetchMyJobs(String email) async {
+    // Validate email before making request
+    if (email.isEmpty) {
+      debugPrint("FETCH MY JOBS ERROR: Email is empty");
+      throw Exception("Email is required to fetch jobs");
+    }
+
     final uri = Uri.parse('${ApiEndpoints.myJobs}?email=$email');
+    debugPrint("FETCH MY JOBS URL: $uri");
 
     try {
       final response = await http
@@ -116,17 +127,39 @@ class JobService {
         }
 
         final List<dynamic> data = jsonDecode(response.body);
-        return data
-            .map((e) => Job.fromJson(e as Map<String, dynamic>))
-            .toList();
+        debugPrint("FETCH MY JOBS: Parsing ${data.length} jobs");
+
+        final jobs = <Job>[];
+        for (var i = 0; i < data.length; i++) {
+          try {
+            final job = Job.fromJson(data[i] as Map<String, dynamic>);
+            jobs.add(job);
+          } catch (e) {
+            debugPrint("FETCH MY JOBS: Error parsing job at index $i: $e");
+            debugPrint("FETCH MY JOBS: Problematic data: ${data[i]}");
+            // Continue parsing other jobs instead of failing completely
+          }
+        }
+
+        debugPrint("FETCH MY JOBS: Successfully parsed ${jobs.length} jobs");
+        return jobs;
+      } else if (response.statusCode == 500) {
+        debugPrint("FETCH MY JOBS: Server error (500) - ${response.body}");
+        throw Exception("Server error: ${response.body}");
       }
 
-      throw Exception("Failed to load my jobs (${response.statusCode})");
+      throw Exception(
+        "Failed to load my jobs (${response.statusCode}): ${response.body}",
+      );
     } on TimeoutException {
-      throw Exception("Server timeout");
+      debugPrint("FETCH MY JOBS ERROR: Server timeout");
+      throw Exception("Server timeout - please try again");
+    } on FormatException catch (e) {
+      debugPrint("FETCH MY JOBS ERROR: JSON parsing error - $e");
+      throw Exception("Invalid data format from server");
     } catch (e) {
       debugPrint("FETCH MY JOBS ERROR: $e");
-      throw Exception("Fetch my jobs failed");
+      throw Exception("Fetch my jobs failed: $e");
     }
   }
 
@@ -246,6 +279,135 @@ class JobService {
     } catch (e) {
       debugPrint("REPORT JOB ERROR: $e");
       throw Exception("Report job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 SAVE JOB
+  // ===============================
+  static Future<void> saveJob({
+    required String userEmail,
+    required int jobId,
+  }) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse("${ApiEndpoints.baseUrl}/jobs/save"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"user_email": userEmail, "job_id": jobId}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      debugPrint("SAVE JOB STATUS: ${res.statusCode}");
+      debugPrint("SAVE JOB BODY: ${res.body}");
+
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        throw Exception("Save job failed (${res.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("SAVE JOB ERROR: $e");
+      throw Exception("Save job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 UNSAVE JOB
+  // ===============================
+  static Future<void> unsaveJob({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    try {
+      final res = await http
+          .delete(
+            Uri.parse(
+              "${ApiEndpoints.baseUrl}/jobs/save/$jobId?email=$userEmail",
+            ),
+            headers: {"Content-Type": "application/json"},
+          )
+          .timeout(const Duration(seconds: 20));
+
+      debugPrint("UNSAVE JOB STATUS: ${res.statusCode}");
+      debugPrint("UNSAVE JOB BODY: ${res.body}");
+
+      if (res.statusCode != 200) {
+        throw Exception("Unsave job failed (${res.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("UNSAVE JOB ERROR: $e");
+      throw Exception("Unsave job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 GET SAVED JOBS
+  // ===============================
+  static Future<List<Job>> fetchSavedJobs(String email) async {
+    try {
+      final uri = Uri.parse('${ApiEndpoints.baseUrl}/jobs/saved?email=$email');
+      debugPrint("FETCH SAVED JOBS URL: $uri");
+
+      final response = await http
+          .get(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("FETCH SAVED JOBS STATUS: ${response.statusCode}");
+      debugPrint("FETCH SAVED JOBS BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty || response.body == '[]') {
+          return [];
+        }
+
+        final List<dynamic> data = jsonDecode(response.body);
+        return data
+            .map((e) => Job.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw Exception("Failed to load saved jobs (${response.statusCode})");
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("FETCH SAVED JOBS ERROR: $e");
+      throw Exception("Fetch saved jobs failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 CHECK IF JOB IS SAVED
+  // ===============================
+  static Future<bool> checkJobSaved({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiEndpoints.baseUrl}/jobs/saved/$jobId?email=$userEmail',
+      );
+
+      final response = await http
+          .get(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("CHECK SAVED JOB STATUS: ${response.statusCode}");
+      debugPrint("CHECK SAVED JOB BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data["is_saved"] == true;
+      }
+
+      return false;
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("CHECK SAVED JOB ERROR: $e");
+      return false;
     }
   }
 }

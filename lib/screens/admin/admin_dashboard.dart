@@ -34,15 +34,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _loadStats();
   }
 
+  // 🔐 Helper method to get auth headers safely
+  Map<String, String> _getAuthHeaders() {
+    final token = UserSession.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Authentication required. Please login.");
+    }
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
   Future<void> _loadStats() async {
     try {
       final res = await http.get(
         Uri.parse(ApiEndpoints.adminStats),
-        headers: {
-          "Authorization": "Bearer ${UserSession.token}",
-          "Content-Type": "application/json",
-        },
+        headers: _getAuthHeaders(),
       );
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (!mounted) return;
@@ -419,79 +429,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _queueCard(
-    BuildContext context, {
-    required String title,
-    required String description,
-    required String buttonText,
-    required VoidCallback onTap,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? const Color(0x4D000000) : const Color(0x14000000),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 40,
-            width: 40,
-            decoration: BoxDecoration(
-              color: kAccent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.assignment, color: kAccent),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kAccent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: onTap,
-            child: Text(buttonText),
-          ),
-        ],
       ),
     );
   }

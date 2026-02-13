@@ -20,7 +20,7 @@ class LocationService {
 
     // 2️⃣ Get GPS
     final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     // 3️⃣ Reverse geocoding (OpenStreetMap)
@@ -52,12 +52,7 @@ class LocationService {
     double toLat,
     double toLng,
   ) {
-    final meters = Geolocator.distanceBetween(
-      fromLat,
-      fromLng,
-      toLat,
-      toLng,
-    );
+    final meters = Geolocator.distanceBetween(fromLat, fromLng, toLat, toLng);
     return meters / 1000.0;
   }
 }

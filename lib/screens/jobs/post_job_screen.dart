@@ -94,6 +94,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
         userEmail: UserSession.email ?? '', // Add user email
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Job will be posted after admin approval"),
@@ -102,6 +103,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
       Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to post job: $e")));
@@ -144,7 +146,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
               _label("Category"),
               DropdownButtonFormField<String>(
-                value: category,
+                initialValue: category,
                 items: categories
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),

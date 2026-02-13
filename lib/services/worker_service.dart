@@ -7,10 +7,48 @@ import '../utils/api_endpoints.dart';
 
 class WorkerService {
   // ===============================
-  // 🔹 FETCH VERIFIED WORKERS (PUBLIC)
+  // 🔹 FETCH VERIFIED WORKERS (PUBLIC) WITH FILTERS
   // ===============================
-  static Future<List<Worker>> fetchWorkers() async {
-    final uri = Uri.parse(ApiEndpoints.workers);
+  static Future<List<Worker>> fetchWorkers({
+    int? minExperience,
+    int? maxExperience,
+    double? minRating,
+    String? location,
+    String? availabilityType, // everyday | selected_days | not_available
+    List<String>? availableDays, // ["Mon", "Tue", "Wed"]
+    bool? isAvailable,
+    String? sortBy,
+  }) async {
+    // Build query parameters
+    final queryParams = <String, String>{};
+    if (minExperience != null) {
+      queryParams['min_experience'] = minExperience.toString();
+    }
+    if (maxExperience != null) {
+      queryParams['max_experience'] = maxExperience.toString();
+    }
+    if (minRating != null) {
+      queryParams['min_rating'] = minRating.toString();
+    }
+    if (location != null && location.isNotEmpty) {
+      queryParams['location'] = location;
+    }
+    if (availabilityType != null && availabilityType.isNotEmpty) {
+      queryParams['availability_type'] = availabilityType;
+    }
+    if (availableDays != null && availableDays.isNotEmpty) {
+      queryParams['available_days'] = availableDays.join(',');
+    }
+    if (isAvailable != null) {
+      queryParams['is_available'] = isAvailable.toString();
+    }
+    if (sortBy != null && sortBy.isNotEmpty) {
+      queryParams['sort_by'] = sortBy;
+    }
+
+    final uri = Uri.parse(
+      ApiEndpoints.workers,
+    ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
     try {
       final res = await http.get(
@@ -45,7 +83,9 @@ class WorkerService {
     required String location,
     String? latitude,
     String? longitude,
-    required String userEmail, // Add user email
+    required String userEmail,
+    String? availabilityType, // everyday | selected_days | not_available
+    String? availableDays, // Comma-separated: "Mon,Tue,Wed"
   }) async {
     final res = await http.post(
       Uri.parse(ApiEndpoints.workers),
@@ -58,7 +98,9 @@ class WorkerService {
         "location": location,
         "latitude": latitude,
         "longitude": longitude,
-        "user_email": userEmail, // Add user email
+        "user_email": userEmail,
+        "availability_type": availabilityType ?? "everyday",
+        "available_days": availableDays,
       }),
     );
 
@@ -139,6 +181,8 @@ class WorkerService {
     String? latitude,
     String? longitude,
     required String userEmail,
+    String? availabilityType,
+    String? availableDays,
   }) async {
     final uri = Uri.parse('${ApiEndpoints.workers}/$workerId?email=$userEmail');
 
@@ -151,6 +195,8 @@ class WorkerService {
       "latitude": latitude,
       "longitude": longitude,
       "user_email": userEmail,
+      "availability_type": availabilityType ?? "everyday",
+      "available_days": availableDays,
     };
 
     try {

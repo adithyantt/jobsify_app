@@ -117,6 +117,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
     }
 
     if (availabilityOption == "selected_days" && selectedDays.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Select at least one working day")),
       );
@@ -172,6 +173,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         );
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(
             const SnackBar(
@@ -184,6 +186,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
           });
     } catch (e) {
       setState(() => loading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
