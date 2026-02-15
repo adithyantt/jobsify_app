@@ -176,8 +176,12 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(
-            const SnackBar(
-              content: Text("Worker will be posted after admin approval"),
+            SnackBar(
+              content: Text(
+                widget.workerToEdit != null
+                    ? "Worker updated successfully."
+                    : "Worker will be posted after admin approval",
+              ),
             ),
           )
           .closed
