@@ -136,11 +136,15 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
       final loc = await LocationService.getCurrentLocation();
       userLat = loc["lat"];
       userLng = loc["lng"];
-      setState(() => locationStatus = loc["place"]);
+      setState(() {
+        locationStatus = loc["place"];
+        locationLoaded = true;
+      });
       await _loadWorkers();
     } catch (_) {
       setState(() {
         locationStatus = "Location permission required";
+        locationLoaded = false;
         isLoading = false;
       });
     }
@@ -299,6 +303,18 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                             : "Location not available",
                         style: const TextStyle(color: Colors.white),
                       ),
+                      if (!locationLoaded) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.refresh,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          onPressed: _initEverything,
+                          tooltip: 'Retry location',
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 12),
