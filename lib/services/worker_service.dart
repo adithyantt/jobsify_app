@@ -72,6 +72,38 @@ class WorkerService {
   }
 
   // ===============================
+  // 🔹 GET WORKER BY ID (PUBLIC)
+  // ===============================
+  static Future<Worker?> fetchWorkerById(int workerId) async {
+    final uri = Uri.parse('${ApiEndpoints.workers}/$workerId');
+
+    try {
+      final res = await http.get(
+        uri,
+        headers: {"Content-Type": "application/json"},
+      );
+
+      debugPrint("FETCH WORKER BY ID STATUS: ${res.statusCode}");
+      debugPrint("FETCH WORKER BY ID BODY: ${res.body}");
+
+      if (res.statusCode == 200) {
+        if (res.body.isEmpty || res.body == 'null') {
+          return null;
+        }
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return Worker.fromJson(data);
+      } else if (res.statusCode == 404) {
+        return null; // Worker not found
+      }
+
+      throw Exception("Failed to load worker (${res.statusCode})");
+    } catch (e) {
+      debugPrint("FETCH WORKER BY ID ERROR: $e");
+      return null;
+    }
+  }
+
+  // ===============================
   // 🔹 CREATE WORKER (PUBLIC)
   // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================

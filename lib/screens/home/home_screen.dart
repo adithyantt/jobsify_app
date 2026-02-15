@@ -8,6 +8,7 @@ import '../settings/settings_screen.dart';
 import '../notifications_screen.dart';
 import '../jobs/saved_jobs_screen.dart';
 import '../../services/user_session.dart';
+import '../../services/notification_service.dart';
 
 /// 🎨 PROFESSIONAL COLORS (UI ONLY)
 const Color kRed = Color(0xFF1E40AF);
@@ -425,7 +426,7 @@ class _HomeContentState extends State<HomeContent> {
 }
 
 /// =======================
-/// 📂 DRAWER (UNCHANGED LOGIC)
+/// 📂 DRAWER (WITH NOTIFICATION BADGE)
 /// =======================
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -435,9 +436,23 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
+  int _unreadCount = 0;
+
   @override
   void initState() {
     super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await NotificationService.getUnreadCount(
+      UserSession.email ?? '',
+    );
+    if (mounted) {
+      setState(() {
+        _unreadCount = count;
+      });
+    }
   }
 
   @override
@@ -487,18 +502,24 @@ class _AppDrawerState extends State<AppDrawer> {
               );
             },
           ),
-          _drawerItem(
+          _drawerItemWithBadge(
             context,
             Icons.notifications_none,
             "Notifications",
-            onTap: () {
+            _unreadCount,
+            onTap: () async {
               Navigator.pop(context);
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
+              // Refresh unread count when returning
+              if (mounted) {
+                _loadUnreadCount();
+              }
             },
           ),
+
           _drawerItem(
             context,
             Icons.settings_outlined,
@@ -520,6 +541,7 @@ class _AppDrawerState extends State<AppDrawer> {
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text("Logout", style: TextStyle(color: Colors.red)),
             onTap: () async {
+              final navigator = Navigator.of(context);
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (context) {
@@ -546,11 +568,7 @@ class _AppDrawerState extends State<AppDrawer> {
               if (!mounted) return;
               if (confirmed == true) {
                 UserSession.clear();
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login',
-                  (route) => false,
-                );
+                navigator.pushNamedAndRemoveUntil('/login', (route) => false);
               }
             },
           ),
@@ -570,6 +588,42 @@ class _AppDrawerState extends State<AppDrawer> {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
+      onTap: onTap ?? () => Navigator.pop(context),
+    );
+  }
+
+  Widget _drawerItemWithBadge(
+    BuildContext context,
+    IconData icon,
+    String title,
+    int badgeCount, {
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Row(
+        children: [
+          Text(title),
+          if (badgeCount > 0) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                badgeCount > 99 ? '99+' : badgeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
       onTap: onTap ?? () => Navigator.pop(context),
     );
   }
