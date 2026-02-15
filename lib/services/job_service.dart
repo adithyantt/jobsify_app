@@ -42,7 +42,41 @@ class JobService {
   }
 
   // ===============================
+  // 🔹 GET JOB BY ID (PUBLIC)
+  // ===============================
+  static Future<Job?> fetchJobById(int jobId) async {
+    final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId');
+
+    try {
+      final response = await http
+          .get(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("FETCH JOB BY ID STATUS: ${response.statusCode}");
+      debugPrint("FETCH JOB BY ID BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty || response.body == 'null') {
+          return null;
+        }
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return Job.fromJson(data);
+      } else if (response.statusCode == 404) {
+        return null; // Job not found
+      }
+
+      throw Exception("Failed to load job (${response.statusCode})");
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("FETCH JOB BY ID ERROR: $e");
+      return null;
+    }
+  }
+
+  // ===============================
   // 🔹 CREATE JOB (PUBLIC)
+
   // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
   static Future<void> createJob({
