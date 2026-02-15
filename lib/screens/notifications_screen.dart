@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart' as app_notification;
 
@@ -19,10 +20,32 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late Future<List<app_notification.Notification>> _notificationsFuture;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    _loadNotifications();
+    // Auto-refresh every 30 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        setState(() {
+          _loadNotifications();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh when screen regains focus
     _loadNotifications();
   }
 
@@ -76,15 +99,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       switch (notifType) {
         case 'job':
-          // Fetch job data first
-          final jobs = await JobService.fetchJobs();
-          final job = jobs.firstWhere(
-            (j) => j.id == refId,
-            orElse: () => throw Exception('Job not found'),
-          );
+          // Fetch job by ID directly
+          final job = await JobService.fetchJobById(refId);
 
           if (!mounted) return;
           Navigator.pop(context); // Close loading dialog
+
+          if (job == null) {
+            // Job was deleted (rejected or removed)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'This job has been removed or is no longer available',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
 
           // Navigate to job detail
           Navigator.push(
@@ -94,15 +126,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           break;
 
         case 'worker':
-          // Fetch worker data first
-          final workers = await WorkerService.fetchWorkers();
-          final worker = workers.firstWhere(
-            (w) => w.id == refId,
-            orElse: () => throw Exception('Worker not found'),
-          );
+          // Fetch worker by ID directly
+          final worker = await WorkerService.fetchWorkerById(refId);
 
           if (!mounted) return;
           Navigator.pop(context); // Close loading dialog
+
+          if (worker == null) {
+            // Worker was deleted (rejected or removed)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'This worker profile has been removed or is no longer available',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
 
           // Navigate to worker detail
           Navigator.push(
