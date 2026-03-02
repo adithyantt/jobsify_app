@@ -9,7 +9,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController nameController = TextEditingController();
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
@@ -20,7 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    nameController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -54,7 +56,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 40),
 
-              _inputField(label: "Full name", controller: nameController),
+              _inputField(label: "First Name", controller: firstNameController),
+              const SizedBox(height: 20),
+
+              _inputField(label: "Last Name", controller: lastNameController),
               const SizedBox(height: 20),
 
               _inputField(label: "Email", controller: emailController),
@@ -131,7 +136,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final result = await AuthService.registerUser(
-        name: nameController.text.trim(),
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text,
       );
@@ -144,12 +150,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (success) {
         userId = result["user_id"];
-        Navigator.pushNamed(
+        final fullName =
+            "${firstNameController.text.trim()} ${lastNameController.text.trim()}";
+        // Clear navigation stack and go to OTP
+        Navigator.pushNamedAndRemoveUntil(
           context,
           '/otp-verification',
+          (route) => false, // This removes all previous routes
           arguments: {
             'userId': userId,
-            'userName': nameController.text.trim(),
+            'userName': fullName,
             'email': emailController.text.trim(),
           },
         );
@@ -157,12 +167,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Check if it's an OTP resent message for existing unverified user
         if (message.contains("OTP resent")) {
           userId = result["user_id"];
-          Navigator.pushNamed(
+          final fullName =
+              "${firstNameController.text.trim()} ${lastNameController.text.trim()}";
+          // Clear navigation stack and go to OTP
+          Navigator.pushNamedAndRemoveUntil(
             context,
             '/otp-verification',
+            (route) => false, // This removes all previous routes
             arguments: {
               'userId': userId,
-              'userName': nameController.text.trim(),
+              'userName': fullName,
               'email': emailController.text.trim(),
             },
           );
@@ -178,8 +192,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String? _validateFields() {
-    if (nameController.text.trim().length < 3) {
-      return "Name must be at least 3 characters";
+    if (firstNameController.text.trim().length < 1) {
+      return "First name is required";
+    }
+    if (lastNameController.text.trim().length < 1) {
+      return "Last name is required";
     }
     if (!RegExp(
       r'^[^@]+@[^@]+\.[^@]+$',

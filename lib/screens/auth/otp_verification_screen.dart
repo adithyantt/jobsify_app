@@ -153,11 +153,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
       if (success) {
         _showSnack(message);
-        // Navigate to home screen after verification
+        // Navigate to home screen after verification and clear navigation stack
         if (UserSession.role == 'admin') {
-          Navigator.pushReplacementNamed(context, '/admin');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/admin',
+            (route) => false,
+          );
         } else {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       } else {
         _showSnack(message);
