@@ -13,14 +13,12 @@ class AdminDrawer extends StatelessWidget {
   const AdminDrawer({super.key});
 
   void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).pop();
     Navigator.of(
       context,
     ).pushReplacement(MaterialPageRoute(builder: (_) => screen));
   }
 
   void _openDashboard(BuildContext context) {
-    Navigator.of(context).pop();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const AdminDashboard()),
     );
