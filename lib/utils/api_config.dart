@@ -1,4 +1,4 @@
 class ApiConfig {
-  static const String baseUrl = "http://172.22.39.105:8000";
-  static const String baseUrl = "http://192.168.191.189:8001";
+  // Using local server IP - for physical device testing
+  static const String baseUrl = "http://10.77.250.105:8000";
 }

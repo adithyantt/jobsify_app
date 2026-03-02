@@ -196,35 +196,20 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                               : "Location not available",
                           style: const TextStyle(color: Colors.white),
                         ),
+                        if (!locationLoaded) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            onPressed: _loadUserLocation,
+                            tooltip: 'Retry location',
+                          ),
+                        ],
                       ],
                     ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        locationLoaded
-                            ? "Jobs near you"
-                            : "Location not available",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      if (!locationLoaded) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.refresh,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          onPressed: _loadUserLocation,
-                          tooltip: 'Retry location',
-                        ),
-                      ],
-                    ],
                   ),
                   const SizedBox(height: 12),
 
