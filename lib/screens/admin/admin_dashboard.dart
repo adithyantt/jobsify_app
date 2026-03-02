@@ -189,15 +189,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       isDark: isDark,
                     ),
                     _actionCard(
-                      title: "Verify Job Providers",
-                      subtitle: "Check new provider applications",
-                      icon: Icons.badge,
-                      color: const Color(0xFF0EA5E9),
-                      onTap: () =>
-                          _open(context, const ProviderVerificationScreen()),
-                      isDark: isDark,
-                    ),
-                    _actionCard(
                       title: "Review Reports",
                       subtitle: "Handle user complaints and fraud flags",
                       icon: Icons.report,
