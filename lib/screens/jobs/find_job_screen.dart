@@ -39,6 +39,10 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
   bool? isUrgent;
   String sortBy = 'distance'; // 'distance', 'salary', 'date'
 
+  /// 🎯 FILTER TEXT CONTROLLERS
+  final TextEditingController _minSalaryController = TextEditingController();
+  final TextEditingController _maxSalaryController = TextEditingController();
+
   /// 📍 AVAILABLE LOCATIONS (extracted from jobs dynamically)
   List<String> availableLocations = [];
 
@@ -670,9 +674,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              controller: TextEditingController(
-                                text: minSalary?.toString(),
-                              ),
+                              controller: _minSalaryController,
                               onChanged: (value) {
                                 minSalary = int.tryParse(value);
                               },
@@ -692,9 +694,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              controller: TextEditingController(
-                                text: maxSalary?.toString(),
-                              ),
+                              controller: _maxSalaryController,
                               onChanged: (value) {
                                 maxSalary = int.tryParse(value);
                               },
