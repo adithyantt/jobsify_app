@@ -108,7 +108,8 @@ class WorkerService {
   // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
   static Future<void> createWorker({
-    required String name,
+    required String firstName,
+    required String lastName,
     required String role,
     required String phone,
     required int experience,
@@ -123,7 +124,8 @@ class WorkerService {
       Uri.parse(ApiEndpoints.workers),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "name": name,
+        "first_name": firstName,
+        "last_name": lastName,
         "role": role,
         "phone": phone,
         "experience": experience,
@@ -205,7 +207,8 @@ class WorkerService {
   // ===============================
   static Future<void> updateWorker({
     required int workerId,
-    required String name,
+    required String firstName,
+    required String lastName,
     required String role,
     required String phone,
     required int experience,
@@ -219,7 +222,8 @@ class WorkerService {
     final uri = Uri.parse('${ApiEndpoints.workers}/$workerId?email=$userEmail');
 
     final body = {
-      "name": name,
+      "first_name": firstName,
+      "last_name": lastName,
       "role": role,
       "phone": phone,
       "experience": experience,

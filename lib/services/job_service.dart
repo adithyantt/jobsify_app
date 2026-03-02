@@ -210,6 +210,8 @@ class JobService {
     String? latitude,
     String? longitude,
     required String userEmail,
+    bool? urgent,
+    String? salary,
   }) async {
     final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId?email=$userEmail');
 
@@ -222,6 +224,8 @@ class JobService {
       "latitude": latitude,
       "longitude": longitude,
       "user_email": userEmail,
+      "urgent": urgent ?? false,
+      "salary": salary,
     };
 
     try {
