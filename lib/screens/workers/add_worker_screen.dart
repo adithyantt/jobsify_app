@@ -14,7 +14,8 @@ class AddWorkerScreen extends StatefulWidget {
 }
 
 class _AddWorkerScreenState extends State<AddWorkerScreen> {
-  final nameCtrl = TextEditingController();
+  final firstNameCtrl = TextEditingController();
+  final lastNameCtrl = TextEditingController();
   final roleCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
   final expCtrl = TextEditingController();
@@ -40,8 +41,14 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
   void initState() {
     super.initState();
     if (widget.workerToEdit != null) {
-      // Pre-fill fields for editing
-      nameCtrl.text = widget.workerToEdit!.name;
+      // Pre-fill fields for editing - split name into first and last
+      final nameParts = widget.workerToEdit!.name.split(' ');
+      if (nameParts.isNotEmpty) {
+        firstNameCtrl.text = nameParts.first;
+        if (nameParts.length > 1) {
+          lastNameCtrl.text = nameParts.sublist(1).join(' ');
+        }
+      }
       selectedRole = roles.contains(widget.workerToEdit!.role)
           ? widget.workerToEdit!.role
           : "Other";
@@ -70,7 +77,8 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
 
   @override
   void dispose() {
-    nameCtrl.dispose();
+    firstNameCtrl.dispose();
+    lastNameCtrl.dispose();
     roleCtrl.dispose();
     phoneCtrl.dispose();
     expCtrl.dispose();
@@ -105,7 +113,8 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         ? roleCtrl.text.trim()
         : selectedRole;
 
-    if (nameCtrl.text.isEmpty ||
+    if (firstNameCtrl.text.isEmpty ||
+        lastNameCtrl.text.isEmpty ||
         roleValue.isEmpty ||
         phoneCtrl.text.isEmpty ||
         expCtrl.text.isEmpty ||
@@ -150,7 +159,8 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         // Update existing worker
         await WorkerService.updateWorker(
           workerId: widget.workerToEdit!.id,
-          name: nameCtrl.text.trim(),
+          firstName: firstNameCtrl.text.trim(),
+          lastName: lastNameCtrl.text.trim(),
           role: roleValue,
           phone: phone,
           experience: exp,
@@ -162,7 +172,8 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
       } else {
         // Create new worker
         await WorkerService.createWorker(
-          name: nameCtrl.text.trim(),
+          firstName: firstNameCtrl.text.trim(),
+          lastName: lastNameCtrl.text.trim(),
           role: roleValue,
           phone: phone,
           experience: exp,
@@ -206,12 +217,18 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
         child: Column(
           children: [
             TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Name"),
+              controller: firstNameCtrl,
+              decoration: const InputDecoration(labelText: "First Name"),
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: lastNameCtrl,
+              decoration: const InputDecoration(labelText: "Last Name"),
+            ),
+            const SizedBox(height: 12),
 
             DropdownButtonFormField<String>(
-              initialValue: selectedRole,
+              value: selectedRole,
               decoration: const InputDecoration(labelText: "Role"),
               items: roles
                   .map(
@@ -232,12 +249,14 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
                 controller: roleCtrl,
                 decoration: const InputDecoration(labelText: "Custom role"),
               ),
+            const SizedBox(height: 12),
 
             TextField(
               controller: phoneCtrl,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(labelText: "Phone"),
             ),
+            const SizedBox(height: 12),
 
             TextField(
               controller: expCtrl,
@@ -246,6 +265,7 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
                 labelText: "Experience (years)",
               ),
             ),
+            const SizedBox(height: 12),
 
             Row(
               children: [

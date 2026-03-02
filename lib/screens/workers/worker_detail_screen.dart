@@ -88,6 +88,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
       context: context,
       builder: (context) => AddReviewDialog(
         workerName: widget.worker.name,
+        worker: widget.worker,
         existingReview: _myReview,
         onSubmit: (rating, comment) async {
           try {
@@ -503,7 +504,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
           _tag(context, widget.worker.role),
           const SizedBox(height: 12),
           Text(
-            widget.worker.name,
+            _getWorkerDisplayName(),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -640,5 +641,18 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
         ),
       ),
     );
+  }
+
+  /// Helper method to get display name - prefers first_name + last_name, falls back to name
+  String _getWorkerDisplayName() {
+    final firstName = widget.worker.firstName;
+    final lastName = widget.worker.lastName;
+    if (firstName != null &&
+        lastName != null &&
+        firstName.isNotEmpty &&
+        lastName.isNotEmpty) {
+      return "$firstName $lastName";
+    }
+    return widget.worker.name;
   }
 }

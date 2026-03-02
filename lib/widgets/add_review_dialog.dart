@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/review_model.dart';
+import '../models/worker_model.dart';
 import 'star_rating.dart';
 
 class AddReviewDialog extends StatefulWidget {
   final String workerName;
+  final Worker? worker;
   final Review? existingReview;
   final Function(int rating, String? comment) onSubmit;
 
   const AddReviewDialog({
     Key? key,
     required this.workerName,
+    this.worker,
     this.existingReview,
     required this.onSubmit,
   }) : super(key: key);
@@ -35,6 +38,20 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
     super.dispose();
   }
 
+  String _getWorkerDisplayName() {
+    if (widget.worker != null) {
+      final firstName = widget.worker!.firstName;
+      final lastName = widget.worker!.lastName;
+      if (firstName != null &&
+          lastName != null &&
+          firstName.isNotEmpty &&
+          lastName.isNotEmpty) {
+        return "$firstName $lastName";
+      }
+    }
+    return widget.workerName;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.existingReview != null;
@@ -52,7 +69,6 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Row(
                   children: [
                     Expanded(
@@ -72,12 +88,10 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.workerName,
+                  _getWorkerDisplayName(),
                   style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
-
-                // Star Rating
                 Center(
                   child: Column(
                     children: [
@@ -102,8 +116,6 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Comment Field
                 TextField(
                   controller: _commentController,
                   maxLines: 4,
@@ -123,8 +135,6 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Submit Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
