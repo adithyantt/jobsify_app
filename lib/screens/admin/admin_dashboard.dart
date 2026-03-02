@@ -74,7 +74,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).pop();
     Navigator.of(
       context,
     ).pushReplacement(MaterialPageRoute(builder: (_) => screen));
