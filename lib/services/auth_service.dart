@@ -4,14 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../utils/api_config.dart';
-// import '../utils/api_endpoints.dart';
 import '../utils/api_constants.dart';
 import '../services/user_session.dart';
 
 class AuthService {
   // ================= REGISTER =================
   static Future<Map<String, dynamic>> registerUser({
-    required String name,
+    required String firstName,
+    required String lastName,
     required String email,
     required String password,
   }) async {
@@ -21,7 +21,8 @@ class AuthService {
             Uri.parse("${ApiConfig.baseUrl}/auth/register"),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
-              "name": name,
+              "first_name": firstName,
+              "last_name": lastName,
               "email": email,
               "password": password,
             }),
@@ -67,11 +68,19 @@ class AuthService {
       final body = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        // Build full name from first_name and last_name for atomicity
+        final firstName = body["first_name"] ?? "";
+        final lastName = body["last_name"] ?? "";
+        final fullName = (firstName.isNotEmpty && lastName.isNotEmpty)
+            ? "$firstName $lastName"
+            : (body["name"] ?? "User");
+
         // ✅ SAVE USER SESSION DATA
         UserSession.email = body["email"];
-        UserSession.userName = body["name"];
+        UserSession.userName = fullName;
         UserSession.role = body["role"];
-        UserSession.token = body["access_token"]; // Save JWT token
+        UserSession.token = body["access_token"];
+        UserSession.phone = body["phone"];
 
         return {
           "success": true,
@@ -90,7 +99,7 @@ class AuthService {
     }
   }
 
-  // ================= LOGIN (JSON – FINAL FIX) =================
+  // ================= LOGIN =================
   static Future<Map<String, dynamic>> loginUser({
     required String email,
     required String password,
@@ -112,22 +121,39 @@ class AuthService {
       if (response.statusCode == 200) {
         if (decoded.containsKey("unverified") &&
             decoded["unverified"] == true) {
-          // Account not verified, return user_id for OTP verification
+          // Account not verified, return user_id and name for OTP verification
+          final firstName = decoded["first_name"] ?? "";
+          final lastName = decoded["last_name"] ?? "";
+          final fullName = (firstName.isNotEmpty && lastName.isNotEmpty)
+              ? "$firstName $lastName"
+              : (decoded["name"] ?? "User");
+
           return {
             "success": false,
             "unverified": true,
             "user_id": decoded["user_id"],
+            "name": fullName,
+            "first_name": firstName,
+            "last_name": lastName,
             "message":
                 decoded["message"] ??
                 "Account not verified. Please verify your email.",
           };
         }
 
+        // Build full name from first_name and last_name for atomicity
+        final firstName = decoded["first_name"] ?? "";
+        final lastName = decoded["last_name"] ?? "";
+        final fullName = (firstName.isNotEmpty && lastName.isNotEmpty)
+            ? "$firstName $lastName"
+            : (decoded["name"] ?? "User");
+
         // ✅ SAVE USER SESSION DATA
         UserSession.email = decoded["email"];
-        UserSession.userName = decoded["name"];
+        UserSession.userName = fullName;
         UserSession.role = decoded["role"];
-        UserSession.token = decoded["access_token"]; // Save the JWT token
+        UserSession.token = decoded["access_token"];
+        UserSession.phone = decoded["phone"];
 
         // Override role for predefined admin emails
         if (ApiConstants.adminEmails.contains(decoded["email"])) {

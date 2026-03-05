@@ -39,6 +39,10 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
   bool? isUrgent;
   String sortBy = 'distance'; // 'distance', 'salary', 'date'
 
+  /// 🎯 FILTER TEXT CONTROLLERS
+  final TextEditingController _minSalaryController = TextEditingController();
+  final TextEditingController _maxSalaryController = TextEditingController();
+
   /// 📍 AVAILABLE LOCATIONS (extracted from jobs dynamically)
   List<String> availableLocations = [];
 
@@ -196,35 +200,20 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                               : "Location not available",
                           style: const TextStyle(color: Colors.white),
                         ),
+                        if (!locationLoaded) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            onPressed: _loadUserLocation,
+                            tooltip: 'Retry location',
+                          ),
+                        ],
                       ],
                     ),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        locationLoaded
-                            ? "Jobs near you"
-                            : "Location not available",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      if (!locationLoaded) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.refresh,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          onPressed: _loadUserLocation,
-                          tooltip: 'Retry location',
-                        ),
-                      ],
-                    ],
                   ),
                   const SizedBox(height: 12),
 
@@ -685,9 +674,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              controller: TextEditingController(
-                                text: minSalary?.toString(),
-                              ),
+                              controller: _minSalaryController,
                               onChanged: (value) {
                                 minSalary = int.tryParse(value);
                               },
@@ -707,9 +694,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              controller: TextEditingController(
-                                text: maxSalary?.toString(),
-                              ),
+                              controller: _maxSalaryController,
                               onChanged: (value) {
                                 maxSalary = int.tryParse(value);
                               },

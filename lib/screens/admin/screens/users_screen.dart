@@ -128,7 +128,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   ),
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(user.name),
+                    title: Text(user.displayName),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -158,23 +158,40 @@ class _UsersScreenState extends State<UsersScreen> {
 
 class AdminUser {
   final int id;
-  final String name;
+  final String? firstName;
+  final String? lastName;
+  final String? name; // For backward compatibility
   final String email;
   final String role;
   final bool isBlocked;
 
   const AdminUser({
     required this.id,
-    required this.name,
+    this.firstName,
+    this.lastName,
+    this.name,
     required this.email,
     required this.role,
     required this.isBlocked,
   });
 
+  /// Returns the display name - prefers first_name + last_name if available, falls back to name
+  String get displayName {
+    if (firstName != null &&
+        lastName != null &&
+        firstName!.isNotEmpty &&
+        lastName!.isNotEmpty) {
+      return "$firstName $lastName";
+    }
+    return name ?? 'Unknown';
+  }
+
   factory AdminUser.fromJson(Map<String, dynamic> json) {
     return AdminUser(
       id: json['id'],
-      name: json['name'] ?? 'Unknown',
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      name: json['name'],
       email: json['email'] ?? 'No email',
       role: json['role'] ?? 'user',
       isBlocked: json['is_blocked'] ?? json['blocked'] ?? false,

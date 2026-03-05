@@ -1,5 +1,7 @@
 class Worker {
   final int id;
+  final String? firstName;
+  final String? lastName;
   final String name;
   final String role;
   final String phone;
@@ -16,6 +18,8 @@ class Worker {
 
   Worker({
     required this.id,
+    this.firstName,
+    this.lastName,
     required this.name,
     required this.role,
     required this.phone,
@@ -34,6 +38,8 @@ class Worker {
   factory Worker.fromJson(Map<String, dynamic> json) {
     return Worker(
       id: json["id"],
+      firstName: json["first_name"],
+      lastName: json["last_name"],
       name: json["name"],
       role: json["role"],
       phone: json["phone"],

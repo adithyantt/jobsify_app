@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../services/job_service.dart';
+import '../../services/location_service.dart';
 import '../../services/user_session.dart';
 import '../../models/job_model.dart';
+
+/// UI COLORS
+const Color kRed = Color(0xFFFF1E2D);
 
 class AddJobScreen extends StatefulWidget {
   final Job? jobToEdit; // Optional job for editing
@@ -21,8 +25,27 @@ class _AddJobScreenState extends State<AddJobScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _salaryController = TextEditingController();
+  final TextEditingController _requiredWorkersController =
+      TextEditingController(text: "1");
 
   String _selectedCategory = "Plumber";
+  bool _urgent = false;
+
+  /// 🔹 LOCATION STATE
+  bool _useCurrentLocation = true;
+  String? _latitude;
+  String? _longitude;
+  bool _fetchingLocation = false;
+
+  final List<String> _categories = [
+    "Plumber",
+    "Painter",
+    "Driver",
+    "Electrician",
+    "Carpenter",
+    "Cleaner",
+  ];
 
   @override
   void initState() {
@@ -34,6 +57,55 @@ class _AddJobScreenState extends State<AddJobScreen> {
       _descriptionController.text = widget.jobToEdit!.description;
       _locationController.text = widget.jobToEdit!.location;
       _phoneController.text = widget.jobToEdit!.phone;
+      _salaryController.text = widget.jobToEdit!.salary ?? '';
+      _urgent = widget.jobToEdit!.urgent;
+
+      // Pre-fill required workers if available
+      _requiredWorkersController.text = widget.jobToEdit!.requiredWorkers
+          .toString();
+
+      // Pre-fill location coordinates if available
+      _latitude = widget.jobToEdit!.latitude;
+      _longitude = widget.jobToEdit!.longitude;
+
+      // If coordinates exist, use current location mode, otherwise manual
+      if (_latitude != null && _longitude != null) {
+        _useCurrentLocation = true;
+      } else {
+        _useCurrentLocation = false;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    _phoneController.dispose();
+    _salaryController.dispose();
+    _requiredWorkersController.dispose();
+    super.dispose();
+  }
+
+  /// 📍 FETCH GPS LOCATION
+  Future<void> _getCurrentLocation() async {
+    try {
+      setState(() => _fetchingLocation = true);
+
+      final loc = await LocationService.getCurrentLocation();
+
+      setState(() {
+        _latitude = loc["lat"].toString();
+        _longitude = loc["lng"].toString();
+        _locationController.text = loc["place"];
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Location error: $e")));
+    } finally {
+      setState(() => _fetchingLocation = false);
     }
   }
 
@@ -61,6 +133,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
               context,
               "Enter job title",
               controller: _titleController,
+              textCapitalization: TextCapitalization.words,
             ),
 
             const SizedBox(height: 16),
@@ -80,11 +153,85 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
             const SizedBox(height: 16),
 
+            /// 📍 LOCATION MODE
             _label("Location"),
+            RadioListTile(
+              title: const Text("Use my current location"),
+              value: true,
+              selected: _useCurrentLocation,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (v) {
+                setState(() {
+                  _useCurrentLocation = v ?? true;
+                  if (v == true) {
+                    _locationController.clear();
+                    _latitude = null;
+                    _longitude = null;
+                  }
+                });
+              },
+            ),
+            RadioListTile(
+              title: const Text("Enter location manually"),
+              value: false,
+              selected: !_useCurrentLocation,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (v) {
+                setState(() {
+                  _useCurrentLocation = v ?? false;
+                  if (v == false) {
+                    _latitude = null;
+                    _longitude = null;
+                  }
+                });
+              },
+            ),
+
+            const SizedBox(height: 8),
+
+            /// 📡 GPS BUTTON
+            if (_useCurrentLocation)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey,
+                  ),
+                  icon: const Icon(Icons.my_location),
+                  label: Text(
+                    _fetchingLocation
+                        ? "Fetching location..."
+                        : "Fetch current location",
+                  ),
+                  onPressed: _fetchingLocation ? null : _getCurrentLocation,
+                ),
+              ),
+
+            /// ✍️ MANUAL LOCATION
+            if (!_useCurrentLocation)
+              _textField(
+                context,
+                "Enter city / town / village",
+                controller: _locationController,
+              ),
+
+            const SizedBox(height: 16),
+
+            _label("Salary / Payment"),
             _textField(
               context,
-              "Enter location",
-              controller: _locationController,
+              "e.g. ₹800-1000/day",
+              controller: _salaryController,
+            ),
+
+            const SizedBox(height: 16),
+
+            _label("Number of Workers Required"),
+            _textField(
+              context,
+              "Enter number of workers needed",
+              controller: _requiredWorkersController,
+              keyboard: TextInputType.number,
             ),
 
             const SizedBox(height: 16),
@@ -95,6 +242,16 @@ class _AddJobScreenState extends State<AddJobScreen> {
               "10-digit mobile number",
               controller: _phoneController,
               keyboard: TextInputType.phone,
+            ),
+
+            const SizedBox(height: 16),
+
+            SwitchListTile(
+              value: _urgent,
+              onChanged: (v) => setState(() => _urgent = v),
+              title: const Text("Mark as Urgent"),
+              activeThumbColor: kRed,
+              contentPadding: EdgeInsets.zero,
             ),
 
             const SizedBox(height: 24),
@@ -138,6 +295,19 @@ class _AddJobScreenState extends State<AddJobScreen> {
       return;
     }
 
+    // Validate required workers
+    final requiredWorkers = int.tryParse(_requiredWorkersController.text);
+    if (requiredWorkers == null || requiredWorkers < 1) {
+      _showSnack("Please enter a valid number of workers (minimum 1)");
+      return;
+    }
+
+    // Validate location if using GPS
+    if (_useCurrentLocation && (_latitude == null || _longitude == null)) {
+      _showSnack("Please fetch your current location");
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -150,7 +320,14 @@ class _AddJobScreenState extends State<AddJobScreen> {
           description: _descriptionController.text.trim(),
           location: _locationController.text.trim(),
           phone: _phoneController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
           userEmail: UserSession.email ?? '',
+          urgent: _urgent,
+          salary: _salaryController.text.trim().isNotEmpty
+              ? _salaryController.text.trim()
+              : null,
+          requiredWorkers: requiredWorkers,
         );
       } else {
         // Create new job
@@ -160,9 +337,14 @@ class _AddJobScreenState extends State<AddJobScreen> {
           description: _descriptionController.text.trim(),
           location: _locationController.text.trim(),
           phone: _phoneController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
           userEmail: UserSession.email ?? '',
-          urgent: false,
-          salary: null,
+          urgent: _urgent,
+          salary: _salaryController.text.trim().isNotEmpty
+              ? _salaryController.text.trim()
+              : null,
+          requiredWorkers: requiredWorkers,
         );
       }
 
@@ -204,11 +386,13 @@ class _AddJobScreenState extends State<AddJobScreen> {
     required TextEditingController controller,
     int maxLines = 1,
     TextInputType keyboard = TextInputType.text,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboard,
+      textCapitalization: textCapitalization,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
@@ -232,12 +416,9 @@ class _AddJobScreenState extends State<AddJobScreen> {
         child: DropdownButton<String>(
           value: _selectedCategory,
           isExpanded: true,
-          items: const [
-            DropdownMenuItem(value: "Plumber", child: Text("Plumber")),
-            DropdownMenuItem(value: "Electrician", child: Text("Electrician")),
-            DropdownMenuItem(value: "Painter", child: Text("Painter")),
-            DropdownMenuItem(value: "Driver", child: Text("Driver")),
-          ],
+          items: _categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
           onChanged: (value) {
             setState(() => _selectedCategory = value!);
           },

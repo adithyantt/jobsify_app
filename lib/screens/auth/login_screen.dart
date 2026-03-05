@@ -132,9 +132,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result["success"] != true) {
       if (result["unverified"] == true) {
-        // Navigate to OTP verification
+        // Navigate to OTP verification - build name from first_name and last_name
         final userId = result["user_id"];
-        final userName = result["name"] ?? "User"; // Backend should return name
+        final firstName = result["first_name"] ?? "";
+        final lastName = result["last_name"] ?? "";
+        final userName = (firstName.isNotEmpty && lastName.isNotEmpty)
+            ? "$firstName $lastName"
+            : (result["name"] ?? "User");
         Navigator.pushNamed(
           context,
           '/otp-verification',
@@ -146,11 +150,11 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Check user role from session
+    // Check user role from session and clear navigation stack
     if (UserSession.role == 'admin') {
-      Navigator.pushReplacementNamed(context, '/admin');
+      Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
     } else {
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
   }
 

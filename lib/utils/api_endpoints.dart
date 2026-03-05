@@ -1,9 +1,7 @@
 class ApiEndpoints {
-  // static const String baseUrl = "http://172.22.39.105:8000";
-  // static const String baseUrl = "http://10.137.141.105:8000";
-  // static const String baseUrl = "http://10.0.2.2:8000";
-  // static const String baseUrl = "http://10.13.1.105:8000";
-  static const String baseUrl = "http://172.22.39.105:8000";
+  // Using the same baseUrl from api_config.dart
+  // For physical device testing
+  static const String baseUrl = "http://10.77.250.105:8000";
 
   // Auth
   static const String login = "$baseUrl/auth/login";
