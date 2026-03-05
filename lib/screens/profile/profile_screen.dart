@@ -632,11 +632,6 @@ class ProfileScreen extends StatelessWidget {
                   onTap: () {},
                 ),
                 _ProfileCard(
-                  icon: Icons.history,
-                  title: "My Activity",
-                  onTap: () {},
-                ),
-                _ProfileCard(
                   icon: Icons.settings,
                   title: "Settings",
                   onTap: () {
@@ -645,11 +640,6 @@ class ProfileScreen extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const SettingsScreen()),
                     );
                   },
-                ),
-                _ProfileCard(
-                  icon: Icons.help_outline,
-                  title: "Help & Support",
-                  onTap: () {},
                 ),
                 _ProfileCard(
                   icon: Icons.logout,
