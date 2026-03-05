@@ -218,11 +218,13 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
           children: [
             TextField(
               controller: firstNameCtrl,
+              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(labelText: "First Name"),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: lastNameCtrl,
+              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(labelText: "Last Name"),
             ),
             const SizedBox(height: 12),

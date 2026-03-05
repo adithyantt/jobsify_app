@@ -642,6 +642,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
 
   /// Helper method to get display name - prefers first_name + last_name, falls back to name
   String _getWorkerDisplayName(Worker worker) {
+    
     final firstName = worker.firstName;
     final lastName = worker.lastName;
     if (firstName != null &&
