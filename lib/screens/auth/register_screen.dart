@@ -56,10 +56,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 40),
 
-              _inputField(label: "First Name", controller: firstNameController),
+              _inputField(
+                label: "First Name",
+                controller: firstNameController,
+                textCapitalization: TextCapitalization.words,
+              ),
               const SizedBox(height: 20),
 
-              _inputField(label: "Last Name", controller: lastNameController),
+              _inputField(
+                label: "Last Name",
+                controller: lastNameController,
+                textCapitalization: TextCapitalization.words,
+              ),
               const SizedBox(height: 20),
 
               _inputField(label: "Email", controller: emailController),
@@ -224,6 +232,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     bool isPassword = false,
     bool showPassword = false,
     VoidCallback? onToggle,
+    TextInputType keyboardType = TextInputType.text,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,6 +243,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword && !showPassword,
+          keyboardType: keyboardType,
+          textCapitalization: textCapitalization,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
