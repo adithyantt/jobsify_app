@@ -477,7 +477,6 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
 
           _drawerItem(context, Icons.home_outlined, "Home"),
-          _drawerItem(context, Icons.work_outline, "Jobs"),
           _drawerItem(
             context,
             Icons.person_outline,
@@ -532,7 +531,6 @@ class _AppDrawerState extends State<AppDrawer> {
               );
             },
           ),
-          _drawerItem(context, Icons.help_outline, "Help & Support"),
 
           const Spacer(),
           const Divider(),
