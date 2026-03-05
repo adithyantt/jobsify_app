@@ -26,6 +26,8 @@ class _AddJobScreenState extends State<AddJobScreen> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _salaryController = TextEditingController();
+  final TextEditingController _requiredWorkersController =
+      TextEditingController(text: "1");
 
   String _selectedCategory = "Plumber";
   bool _urgent = false;
@@ -58,6 +60,10 @@ class _AddJobScreenState extends State<AddJobScreen> {
       _salaryController.text = widget.jobToEdit!.salary ?? '';
       _urgent = widget.jobToEdit!.urgent;
 
+      // Pre-fill required workers if available
+      _requiredWorkersController.text = widget.jobToEdit!.requiredWorkers
+          .toString();
+
       // Pre-fill location coordinates if available
       _latitude = widget.jobToEdit!.latitude;
       _longitude = widget.jobToEdit!.longitude;
@@ -78,6 +84,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
     _locationController.dispose();
     _phoneController.dispose();
     _salaryController.dispose();
+    _requiredWorkersController.dispose();
     super.dispose();
   }
 
@@ -126,6 +133,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
               context,
               "Enter job title",
               controller: _titleController,
+              textCapitalization: TextCapitalization.words,
             ),
 
             const SizedBox(height: 16),
@@ -218,6 +226,16 @@ class _AddJobScreenState extends State<AddJobScreen> {
 
             const SizedBox(height: 16),
 
+            _label("Number of Workers Required"),
+            _textField(
+              context,
+              "Enter number of workers needed",
+              controller: _requiredWorkersController,
+              keyboard: TextInputType.number,
+            ),
+
+            const SizedBox(height: 16),
+
             _label("Contact Number"),
             _textField(
               context,
@@ -277,6 +295,13 @@ class _AddJobScreenState extends State<AddJobScreen> {
       return;
     }
 
+    // Validate required workers
+    final requiredWorkers = int.tryParse(_requiredWorkersController.text);
+    if (requiredWorkers == null || requiredWorkers < 1) {
+      _showSnack("Please enter a valid number of workers (minimum 1)");
+      return;
+    }
+
     // Validate location if using GPS
     if (_useCurrentLocation && (_latitude == null || _longitude == null)) {
       _showSnack("Please fetch your current location");
@@ -302,6 +327,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
           salary: _salaryController.text.trim().isNotEmpty
               ? _salaryController.text.trim()
               : null,
+          requiredWorkers: requiredWorkers,
         );
       } else {
         // Create new job
@@ -318,6 +344,7 @@ class _AddJobScreenState extends State<AddJobScreen> {
           salary: _salaryController.text.trim().isNotEmpty
               ? _salaryController.text.trim()
               : null,
+          requiredWorkers: requiredWorkers,
         );
       }
 
@@ -359,11 +386,13 @@ class _AddJobScreenState extends State<AddJobScreen> {
     required TextEditingController controller,
     int maxLines = 1,
     TextInputType keyboard = TextInputType.text,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboard,
+      textCapitalization: textCapitalization,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
