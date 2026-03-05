@@ -21,6 +21,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
   final TextEditingController locationCtrl = TextEditingController();
   final TextEditingController salaryCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
+  final TextEditingController requiredWorkersCtrl = TextEditingController(
+    text: "1",
+  );
 
   String category = "Plumber";
   bool urgent = false;
@@ -47,6 +50,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
     locationCtrl.dispose();
     salaryCtrl.dispose();
     phoneCtrl.dispose();
+    requiredWorkersCtrl.dispose();
     super.dispose();
   }
 
@@ -82,6 +86,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
       return;
     }
 
+    // Parse required workers
+    final requiredWorkers = int.tryParse(requiredWorkersCtrl.text) ?? 1;
+
     try {
       await JobService.createJob(
         title: titleCtrl.text.trim(),
@@ -91,7 +98,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
         phone: phoneCtrl.text.trim(),
         latitude: latitude,
         longitude: longitude,
-        userEmail: UserSession.email ?? '', // Add user email
+        userEmail: UserSession.email ?? '',
+        urgent: urgent,
+        requiredWorkers: requiredWorkers,
       );
 
       if (!mounted) return;
@@ -136,6 +145,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
               _label("Job Title"),
               TextFormField(
                 controller: titleCtrl,
+                textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: "e.g. Need plumber for pipe repair",
                 ),
@@ -246,6 +256,16 @@ class _PostJobScreenState extends State<PostJobScreen> {
                 hint: "10-digit mobile number",
                 keyboardType: TextInputType.phone,
                 validator: (v) => v!.length < 10 ? "Enter valid number" : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              _label("Number of Workers Required"),
+              _input(
+                context,
+                controller: requiredWorkersCtrl,
+                hint: "Enter number of workers needed",
+                keyboardType: TextInputType.number,
               ),
 
               const SizedBox(height: 16),
