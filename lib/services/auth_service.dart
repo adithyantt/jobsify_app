@@ -80,6 +80,7 @@ class AuthService {
         UserSession.userName = fullName;
         UserSession.role = body["role"];
         UserSession.token = body["access_token"];
+        UserSession.phone = body["phone"];
 
         return {
           "success": true,
@@ -152,6 +153,7 @@ class AuthService {
         UserSession.userName = fullName;
         UserSession.role = decoded["role"];
         UserSession.token = decoded["access_token"];
+        UserSession.phone = decoded["phone"];
 
         // Override role for predefined admin emails
         if (ApiConstants.adminEmails.contains(decoded["email"])) {

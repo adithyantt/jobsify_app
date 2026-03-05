@@ -76,8 +76,6 @@ class JobService {
 
   // ===============================
   // 🔹 CREATE JOB (PUBLIC)
-
-  // (ADMIN APPROVAL REQUIRED LATER)
   // ===============================
   static Future<void> createJob({
     required String title,
@@ -87,9 +85,10 @@ class JobService {
     required String phone,
     String? latitude,
     String? longitude,
-    required String userEmail, // Add user email
+    required String userEmail,
     bool? urgent,
     String? salary,
+    int? requiredWorkers,
   }) async {
     final uri = Uri.parse(ApiEndpoints.jobs);
 
@@ -101,9 +100,10 @@ class JobService {
       "phone": phone,
       "latitude": latitude,
       "longitude": longitude,
-      "user_email": userEmail, // Add user email
+      "user_email": userEmail,
       "urgent": urgent ?? false,
       "salary": salary,
+      "required_workers": requiredWorkers ?? 1,
     };
 
     try {
@@ -136,9 +136,7 @@ class JobService {
   // ===============================
   // 🔹 FETCH MY JOBS (USER-SPECIFIC)
   // ===============================
-
   static Future<List<Job>> fetchMyJobs(String email) async {
-    // Validate email before making request
     if (email.isEmpty) {
       debugPrint("FETCH MY JOBS ERROR: Email is empty");
       throw Exception("Email is required to fetch jobs");
@@ -171,7 +169,6 @@ class JobService {
           } catch (e) {
             debugPrint("FETCH MY JOBS: Error parsing job at index $i: $e");
             debugPrint("FETCH MY JOBS: Problematic data: ${data[i]}");
-            // Continue parsing other jobs instead of failing completely
           }
         }
 
@@ -212,6 +209,7 @@ class JobService {
     required String userEmail,
     bool? urgent,
     String? salary,
+    int? requiredWorkers,
   }) async {
     final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId?email=$userEmail');
 
@@ -226,6 +224,7 @@ class JobService {
       "user_email": userEmail,
       "urgent": urgent ?? false,
       "salary": salary,
+      "required_workers": requiredWorkers ?? 1,
     };
 
     try {
@@ -446,6 +445,123 @@ class JobService {
     } catch (e) {
       debugPrint("CHECK SAVED JOB ERROR: $e");
       return false;
+    }
+  }
+
+  // ===============================
+  // 🔹 HIDE JOB (Soft Delete)
+  // ===============================
+  static Future<void> hideJob({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId/hide?email=$userEmail');
+
+    try {
+      final response = await http
+          .put(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("HIDE JOB STATUS: ${response.statusCode}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Job hide failed (${response.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("HIDE JOB ERROR: $e");
+      throw Exception("Hide job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 SHOW JOB (Restore from Hidden)
+  // ===============================
+  static Future<void> showJob({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId/show?email=$userEmail');
+
+    try {
+      final response = await http
+          .put(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("SHOW JOB STATUS: ${response.statusCode}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Job show failed (${response.statusCode})");
+      }
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("SHOW JOB ERROR: $e");
+      throw Exception("Show job failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 HIRE WORKER (Update Vacancies)
+  // ===============================
+  static Future<Map<String, dynamic>> hireWorker({
+    required int jobId,
+    required String userEmail,
+  }) async {
+    final uri = Uri.parse('${ApiEndpoints.jobs}/$jobId/hire?email=$userEmail');
+
+    try {
+      final response = await http
+          .put(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("HIRE WORKER STATUS: ${response.statusCode}");
+
+      if (response.statusCode != 200) {
+        throw Exception("Hire worker failed (${response.statusCode})");
+      }
+
+      return jsonDecode(response.body);
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("HIRE WORKER ERROR: $e");
+      throw Exception("Hire worker failed");
+    }
+  }
+
+  // ===============================
+  // 🔹 UPDATE REQUIRED WORKERS
+  // ===============================
+  static Future<Map<String, dynamic>> updateRequiredWorkers({
+    required int jobId,
+    required String userEmail,
+    required int requiredWorkers,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiEndpoints.jobs}/$jobId/required-workers?email=$userEmail&required_workers=$requiredWorkers',
+    );
+
+    try {
+      final response = await http
+          .put(uri, headers: {"Content-Type": "application/json"})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint("UPDATE REQUIRED WORKERS STATUS: ${response.statusCode}");
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          "Update required workers failed (${response.statusCode})",
+        );
+      }
+
+      return jsonDecode(response.body);
+    } on TimeoutException {
+      throw Exception("Server timeout");
+    } catch (e) {
+      debugPrint("UPDATE REQUIRED WORKERS ERROR: $e");
+      throw Exception("Update required workers failed");
     }
   }
 }

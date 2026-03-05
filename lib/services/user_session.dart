@@ -6,6 +6,7 @@ class UserSession {
   static final ValueNotifier<String?> emailNotifier = ValueNotifier(null);
   static final ValueNotifier<String?> roleNotifier = ValueNotifier(null);
   static final ValueNotifier<String?> tokenNotifier = ValueNotifier(null);
+  static final ValueNotifier<String?> phoneNotifier = ValueNotifier(null);
 
   static String? get userName => userNameNotifier.value;
   static set userName(String? v) {
@@ -25,6 +26,12 @@ class UserSession {
     _saveToPrefs('user_role', v);
   }
 
+  static String? get phone => phoneNotifier.value;
+  static set phone(String? v) {
+    phoneNotifier.value = v;
+    _saveToPrefs('user_phone', v);
+  }
+
   // 🔐 JWT TOKEN (OPTIONAL / FUTURE USE)
   static String? get token => tokenNotifier.value;
   static set token(String? v) {
@@ -40,6 +47,7 @@ class UserSession {
     emailNotifier.value = null;
     roleNotifier.value = null;
     tokenNotifier.value = null;
+    phoneNotifier.value = null;
     _clearPrefs();
   }
 
@@ -50,6 +58,7 @@ class UserSession {
     emailNotifier.value = prefs.getString('user_email');
     roleNotifier.value = prefs.getString('user_role');
     tokenNotifier.value = prefs.getString('user_token');
+    phoneNotifier.value = prefs.getString('user_phone');
   }
 
   // Save individual value to shared preferences
@@ -69,5 +78,6 @@ class UserSession {
     await prefs.remove('user_email');
     await prefs.remove('user_role');
     await prefs.remove('user_token');
+    await prefs.remove('user_phone');
   }
 }
