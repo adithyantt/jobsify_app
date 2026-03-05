@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const FlutterLogo(size: 64),
+              const Icon(Icons.work_outline, size: 64, color: Colors.white),
               const SizedBox(height: 12),
               const Text(
                 'Jobsify',
