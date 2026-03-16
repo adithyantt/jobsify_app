@@ -10,6 +10,7 @@ import '../jobs/job_detail_screen.dart';
 import '../workers/add_worker_screen.dart';
 import '../jobs/add_job_screen.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../../utils/offline_handler.dart';
 
 // 🔹 MY WORKER SCREEN
 class MyWorkerScreen extends StatefulWidget {
@@ -49,7 +50,9 @@ class _MyWorkerScreenState extends State<MyWorkerScreen> {
         hasError = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (mounted) {
+        OfflineHandler.showErrorSnackBar(context, e, onRetry: _loadMyWorkers);
+      }
       setState(() {
         hasError = true;
         isLoading = false;
@@ -217,21 +220,24 @@ class _MyWorkerScreenState extends State<MyWorkerScreen> {
                                     userEmail: UserSession.email ?? '',
                                   );
                                   _loadMyWorkers(); // Refresh list
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Worker deleted successfully",
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Worker deleted successfully",
+                                        ),
+                                        backgroundColor: Colors.green,
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        "Error deleting worker: $e",
-                                      ),
-                                    ),
-                                  );
+                                  if (mounted) {
+                                    OfflineHandler.showErrorSnackBar(
+                                      context,
+                                      e,
+                                      customMessage: 'Error deleting worker',
+                                    );
+                                  }
                                 }
                               }
                             },
@@ -293,7 +299,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         hasError = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (mounted) {
+        OfflineHandler.showErrorSnackBar(context, e, onRetry: _loadMyJobs);
+      }
       setState(() {
         hasError = true;
         isLoading = false;
