@@ -1,7 +1,6 @@
 class ApiEndpoints {
-  // Using the same baseUrl from api_config.dart
-  // For physical device testing
-  static const String baseUrl = "http://10.77.250.105:8000";
+  // Fixed IP for both emulator & physical device (backend: uvicorn --host 0.0.0.0 --port 8000)
+  static const String baseUrl = "http://10.253.86.105:8000";
 
   // Auth
   static const String login = "$baseUrl/auth/login";
