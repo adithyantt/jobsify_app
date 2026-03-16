@@ -25,8 +25,9 @@ class SalaryUtils {
 
   /// Checks if a salary falls within the given range
   static bool isSalaryInRange(String? salary, int? minSalary, int? maxSalary) {
-    if (salary == null || salary.isEmpty)
+    if (salary == null || salary.isEmpty) {
       return true; // No salary means include
+    }
     if (minSalary == null && maxSalary == null) return true; // No filter
 
     int? jobSalary = extractMinSalary(salary);
