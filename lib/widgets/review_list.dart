@@ -11,7 +11,7 @@ class ReviewList extends StatelessWidget {
   final String? currentUserEmail;
 
   const ReviewList({
-    Key? key,
+    super.key,
     required this.reviews,
     this.isLoading = false,
     this.error,
@@ -19,7 +19,7 @@ class ReviewList extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.currentUserEmail,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +98,12 @@ class ReviewCard extends StatelessWidget {
   final VoidCallback? onDelete;
 
   const ReviewCard({
-    Key? key,
+    super.key,
     required this.review,
     this.isMyReview = false,
     this.onEdit,
     this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +132,7 @@ class ReviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      review.reviewerName ?? review.reviewerEmail,
+                      review.reviewerName ?? review.reviewerEmail.split('@')[0],
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
