@@ -8,13 +8,13 @@ class StarRating extends StatelessWidget {
   final bool showValue;
 
   const StarRating({
-    Key? key,
+    super.key,
     required this.rating,
     this.starCount = 5,
     this.size = 20,
     this.color,
     this.showValue = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -59,11 +59,11 @@ class StarRatingInput extends StatefulWidget {
   final double size;
 
   const StarRatingInput({
-    Key? key,
+    super.key,
     this.initialRating = 0,
     required this.onRatingChanged,
     this.size = 40,
-  }) : super(key: key);
+  });
 
   @override
   State<StarRatingInput> createState() => _StarRatingInputState();
@@ -143,11 +143,11 @@ class RatingBar extends StatelessWidget {
   final double barHeight;
 
   const RatingBar({
-    Key? key,
+    super.key,
     required this.distribution,
     required this.totalReviews,
     this.barHeight = 8,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -10,12 +10,12 @@ class AddReviewDialog extends StatefulWidget {
   final Function(int rating, String? comment) onSubmit;
 
   const AddReviewDialog({
-    Key? key,
+    super.key,
     required this.workerName,
     this.worker,
     this.existingReview,
     required this.onSubmit,
-  }) : super(key: key);
+  });
 
   @override
   State<AddReviewDialog> createState() => _AddReviewDialogState();
@@ -24,6 +24,7 @@ class AddReviewDialog extends StatefulWidget {
 class _AddReviewDialogState extends State<AddReviewDialog> {
   late int _rating;
   final TextEditingController _commentController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -50,6 +51,19 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
       }
     }
     return widget.workerName;
+  }
+
+  Future<void> _submitReview() async {
+    if (_rating == 0) return;
+    setState(() => _isSubmitting = true);
+    try {
+      await widget.onSubmit(_rating, _commentController.text.trim());
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
@@ -106,7 +120,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _rating > 0 ? '${_rating} stars' : 'Tap to rate',
+                        _rating > 0 ? '$_rating stars' : 'Tap to rate',
                         style: TextStyle(
                           color: _rating > 0 ? Colors.amber[700] : Colors.grey,
                           fontWeight: FontWeight.w500,
@@ -138,15 +152,9 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _rating > 0
-                        ? () {
-                            widget.onSubmit(
-                              _rating,
-                              _commentController.text.trim(),
-                            );
-                            Navigator.pop(context);
-                          }
-                        : null,
+                    onPressed: _isSubmitting || _rating == 0
+                        ? null
+                        : _submitReview,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[700],
                       foregroundColor: Colors.white,
@@ -155,13 +163,22 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      isEditing ? 'Update Review' : 'Submit Review',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            isEditing ? 'Update Review' : 'Submit Review',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],
