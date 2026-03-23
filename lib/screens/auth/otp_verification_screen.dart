@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-
 import '../../services/user_session.dart';
+import '../../widgets/auth/auth_shell.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final int? userId;
@@ -20,9 +22,15 @@ class OtpVerificationScreen extends StatefulWidget {
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController otpController = TextEditingController();
+
   late int? userId;
   late String? userName;
   late String? email;
+  bool isLoading = false;
+  int _remainingSeconds = 300;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -30,59 +38,64 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     userId = widget.userId;
     userName = widget.userName;
     email = widget.email;
+    _startTimer();
   }
-
-  final TextEditingController otpController = TextEditingController();
-  bool isLoading = false;
 
   @override
   void dispose() {
+    _timer?.cancel();
     otpController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+    return AuthShell(
+      title: "Verify your OTP",
+      subtitle: "",
+      footer: Center(
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Text(
+            "Back",
+            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      children: [
+        Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-
-              const Text(
-                "Jobsify",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B0C6D),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF4FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  "Code expires in ${_formatTimer(_remainingSeconds)}",
+                  style: const TextStyle(
+                    color: Color(0xFF2649C7),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                "Verify your email",
-                style: TextStyle(color: Colors.grey),
-              ),
-
-              const SizedBox(height: 40),
-
-              const Text(
-                "Enter the 6-digit OTP sent to your email",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-
-              const SizedBox(height: 20),
-
-              _inputField(
-                label: "Enter 6-digit OTP",
+              const SizedBox(height: 18),
+              AuthInputField(
+                label: "6-digit OTP",
                 controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textInputAction: TextInputAction.done,
+                validator: _validateOtp,
+                onSubmitted: (_) => _verifyOtp(),
+                onChanged: _normalizeOtp,
               ),
-
-              const SizedBox(height: 30),
-
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -90,7 +103,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B0C6D),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                   onPressed: isLoading ? null : _verifyOtp,
@@ -102,39 +115,23 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context); // Go back to register
-                  },
-                  child: const Text(
-                    "Back to Register",
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
-  /// 🔐 VERIFY OTP
   Future<void> _verifyOtp() async {
-    if (otpController.text.length != 6) {
-      _showSnack("Please enter a valid 6-digit OTP");
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnack("Please enter a valid OTP");
       return;
     }
 
     if (userId == null) {
-      _showSnack("Invalid user session. Please try again.");
+      _showErrorSnack("Invalid user session. Please try again.");
       return;
     }
 
@@ -152,8 +149,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       final message = result["message"] ?? "Verification failed";
 
       if (success) {
-        _showSnack(message);
-        // Navigate to home screen after verification and clear navigation stack
+        _showSuccessSnack(message);
         if (UserSession.role == 'admin') {
           Navigator.pushNamedAndRemoveUntil(
             context,
@@ -164,45 +160,67 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       } else {
-        _showSnack(message);
+        _showErrorSnack(message);
       }
-    } catch (e) {
-      _showSnack("Unable to connect to server");
+    } catch (_) {
+      _showErrorSnack("Unable to connect to server");
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _normalizeOtp(String value) {
+    final normalized = value.replaceAll(RegExp(r'\D'), '');
+    if (normalized == value) return;
+    otpController.value = TextEditingValue(
+      text: normalized,
+      selection: TextSelection.collapsed(offset: normalized.length),
+    );
   }
 
-  Widget _inputField({
-    required String label,
-    required TextEditingController controller,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            counterText: "",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
+  String? _validateOtp(String? value) {
+    final otp = value?.trim() ?? '';
+    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
+      return "Please enter a valid 6-digit OTP";
+    }
+    return null;
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+        setState(() => _remainingSeconds = 0);
+        return;
+      }
+      setState(() => _remainingSeconds -= 1);
+    });
+  }
+
+  String _formatTimer(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final remainingSeconds = (seconds % 60).toString().padLeft(2, '0');
+    return "$minutes:$remainingSeconds";
+  }
+
+  void _showErrorSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccessSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }
