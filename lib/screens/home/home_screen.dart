@@ -6,13 +6,14 @@ import '../workers/find_workers_screen.dart';
 import '../jobs/jobs_home_screen.dart';
 import '../settings/settings_screen.dart';
 import '../notifications_screen.dart';
+import '../messages/messages_inbox_screen.dart';
 import '../jobs/saved_jobs_screen.dart';
 import '../../services/user_session.dart';
 import '../../services/notification_service.dart';
+import '../../services/messaging_service.dart';
+import '../../utils/offline_handler.dart';
 
 /// 🎨 PROFESSIONAL COLORS (UI ONLY)
-const Color kRed = Color(0xFF1E40AF);
-const Color kBlue = Color(0xFF6B7280);
 const Color kGreen = Color(0xFF10B981);
 const Color kYellow = Color(0xFFD1D5DB);
 
@@ -25,6 +26,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   /// 🔒 BACKEND SCREENS – UNCHANGED
   final List<Widget> _pages = const [
@@ -41,9 +55,15 @@ class _HomeScreenState extends State<HomeScreen> {
       /// ✅ REQUIRED FOR HAMBURGER MENU
       drawer: const AppDrawer(),
 
-      body: _pages[_selectedIndex],
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        children: _pages,
+      ),
 
-      /// ✅ BOTTOM NAV (UNCHANGED LOGIC)
+      /// ✅ BOTTOM NAV WITH SWIPE SUPPORT
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor,
@@ -51,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           FocusManager.instance.primaryFocus?.unfocus();
           setState(() => _selectedIndex = index);
+          _pageController.jumpToPage(index);
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
@@ -80,6 +101,12 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   final FocusNode _searchFocusNode = FocusNode();
+  int _unreadMessageCount = 0;
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadMessageCount();
+  }
 
   final List<Map<String, dynamic>> categories = const [
     {"name": "Plumber", "icon": Icons.plumbing, "color": Colors.blue},
@@ -102,8 +129,19 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
+  Future<void> _loadUnreadMessageCount() async {
+    final email = UserSession.email;
+    if (email == null) return;
+    final unreadCount = await MessagingService.getUnreadCount(email);
+    if (mounted) {
+      setState(() => _unreadMessageCount = unreadCount);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     return GestureDetector(
       onTap: () => _searchFocusNode.unfocus(),
       child: CustomScrollView(
@@ -112,7 +150,7 @@ class _HomeContentState extends State<HomeContent> {
           SliverToBoxAdapter(
             child: Builder(
               builder: (context) => Container(
-                color: kRed,
+                color: primary,
                 padding: const EdgeInsets.fromLTRB(16, 48, 16, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +174,53 @@ class _HomeContentState extends State<HomeContent> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 40),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.chat_bubble_outline,
+                                color: Colors.white,
+                              ),
+                              onPressed: () async {
+                                _searchFocusNode.unfocus();
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const MessagesInboxScreen(),
+                                  ),
+                                );
+                                if (!mounted) return;
+                                _loadUnreadMessageCount();
+                              },
+                            ),
+                            if (_unreadMessageCount > 0)
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    _unreadMessageCount > 99
+                                        ? '99+'
+                                        : _unreadMessageCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
 
@@ -202,7 +286,7 @@ class _HomeContentState extends State<HomeContent> {
               delegate: SliverChildBuilderDelegate((context, index) {
                 final ctaCards = [
                   {
-                    "color": const Color(0xFFFF1E2D),
+                    "color": primary,
                     "title": "Browse Jobs",
                     "subtitle": "Find available work",
                     "icon": Icons.work_outline,
@@ -297,6 +381,8 @@ class _HomeContentState extends State<HomeContent> {
 
   /// 📍 LOCATION BOTTOM SHEET
   void _showLocationBottomSheet(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     final cities = [
       "Delhi",
       "Bangalore",
@@ -320,8 +406,8 @@ class _HomeContentState extends State<HomeContent> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: kRed,
+              decoration: BoxDecoration(
+                color: primary,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
@@ -445,26 +531,35 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Future<void> _loadUnreadCount() async {
-    final count = await NotificationService.getUnreadCount(
-      UserSession.email ?? '',
-    );
-    if (mounted) {
-      setState(() {
-        _unreadCount = count;
-      });
+    try {
+      final count = await NotificationService.getUnreadCount(
+        UserSession.email ?? '',
+      );
+      if (mounted) {
+        setState(() {
+          _unreadCount = count;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        OfflineHandler.showErrorSnackBar(context, e, onRetry: _loadUnreadCount);
+        setState(() => _unreadCount = 0);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     return Drawer(
       child: Column(
         children: [
           UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: kRed),
-            currentAccountPicture: const CircleAvatar(
+            decoration: BoxDecoration(color: primary),
+            currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: kRed),
+              child: Icon(Icons.person, color: primary),
             ),
             accountName: ValueListenableBuilder<String?>(
               valueListenable: UserSession.userNameNotifier,
