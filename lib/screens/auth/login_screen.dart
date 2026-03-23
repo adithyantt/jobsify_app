@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_session.dart';
+import '../../widgets/auth/auth_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
@@ -25,45 +27,65 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+    return AuthShell(
+      title: "Login to Jobsify",
+      subtitle: "",
+      footer: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("You don't have an account yet? "),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/register'),
+            child: const Text(
+              "Sign up",
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      children: [
+        Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-              const Text(
-                "Jobsify",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B0C6D),
-                ),
+              AuthInputField(
+                label: "Email",
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: _validateEmail,
+                onChanged: _normalizeEmail,
+                autofillHints: const [AutofillHints.email],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                "Find local jobs and manage work easily",
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 40),
-
-              _inputField(label: "Email", controller: emailController),
-              const SizedBox(height: 20),
-
-              _inputField(
+              const SizedBox(height: 18),
+              AuthInputField(
                 label: "Password",
                 controller: passwordController,
                 isPassword: true,
                 showPassword: showPassword,
+                textInputAction: TextInputAction.done,
+                validator: _validatePassword,
+                onSubmitted: (_) => _loginUser(),
                 onToggle: () {
                   setState(() => showPassword = !showPassword);
                 },
+                autofillHints: const [AutofillHints.password],
               ),
-
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/forgot-password');
+                  },
+                  child: const Text("Forgot password?"),
+                ),
+              ),
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -71,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B0C6D),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                   onPressed: isLoading ? null : _loginUser,
@@ -83,74 +105,59 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("You don't have an account yet? "),
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, '/register'),
-                    child: const Text(
-                      "Sign up",
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
   Future<void> _loginUser() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text;
+    FocusScope.of(context).unfocus();
 
-    final error = _validateFields();
-    if (error != null) {
-      _showSnack(error);
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnack("Please correct the highlighted fields");
       return;
     }
 
     setState(() => isLoading = true);
 
     final result = await AuthService.loginUser(
-      email: email,
-      password: password,
+      email: emailController.text.trim().toLowerCase(),
+      password: passwordController.text,
     );
 
-    setState(() => isLoading = false);
-
     if (!mounted) return;
+    setState(() => isLoading = false);
 
     if (result["success"] != true) {
       if (result["unverified"] == true) {
-        // Navigate to OTP verification - build name from first_name and last_name
         final userId = result["user_id"];
         final firstName = result["first_name"] ?? "";
         final lastName = result["last_name"] ?? "";
-        final userName = (firstName.isNotEmpty && lastName.isNotEmpty)
-            ? "$firstName $lastName"
-            : (result["name"] ?? "User");
+        final fullName = [
+          firstName,
+          lastName,
+        ].where((part) => part.toString().trim().isNotEmpty).join(" ");
+        final email = emailController.text.trim().toLowerCase();
+        final userName = fullName.isNotEmpty
+            ? fullName
+            : (email.contains('@') ? email.split('@').first : "User");
         Navigator.pushNamed(
           context,
           '/otp-verification',
-          arguments: {'userId': userId, 'userName': userName, 'email': email},
+          arguments: {
+            'userId': userId,
+            'userName': userName,
+            'email': emailController.text.trim().toLowerCase(),
+          },
         );
       } else {
-        _showSnack(result["message"] ?? "Login failed");
+        _showErrorSnack(result["message"] ?? "Login failed");
       }
       return;
     }
 
-    // Check user role from session and clear navigation stack
     if (UserSession.role == 'admin') {
       Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
     } else {
@@ -158,55 +165,40 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String? _validateFields() {
-    if (!emailController.text.contains("@")) {
-      return "Enter a valid email address";
+  void _normalizeEmail(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == value) return;
+    emailController.value = TextEditingValue(
+      text: normalized,
+      selection: TextSelection.collapsed(offset: normalized.length),
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim().toLowerCase() ?? '';
+    if (email.isEmpty) {
+      return "Email is required";
     }
-    if (passwordController.text.length < 6) {
-      return "Password must be at least 6 characters";
+    if (!RegExp(r'^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$').hasMatch(email)) {
+      return "Enter a valid email address";
     }
     return null;
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  String? _validatePassword(String? value) {
+    if ((value ?? '').isEmpty) {
+      return "Password is required";
+    }
+    return null;
   }
 
-  Widget _inputField({
-    required String label,
-    required TextEditingController controller,
-    bool isPassword = false,
-    bool showPassword = false,
-    VoidCallback? onToggle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          obscureText: isPassword && !showPassword,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            suffixIcon: isPassword
-                ? IconButton(
-                    icon: Icon(
-                      showPassword ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: onToggle,
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
+  void _showErrorSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

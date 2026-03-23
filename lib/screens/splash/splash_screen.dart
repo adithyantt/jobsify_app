@@ -11,11 +11,19 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 3), () {
+    _timer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
 
       try {
@@ -42,13 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1B0C6D), Color(0xFF12004A)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        color: Theme.of(context).primaryColor,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -59,14 +61,14 @@ class _SplashScreenState extends State<SplashScreen> {
                 'Jobsify',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
+                  letterSpacing: 0.4,
                 ),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Find Local Jobs Easily',
+                'Skilled Labour Service Platform',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
