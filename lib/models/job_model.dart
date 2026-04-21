@@ -7,6 +7,7 @@ class Job {
   final String phone;
   final String? latitude;
   final String? longitude;
+  final String? userEmail;
   final bool verified;
   final bool urgent;
   final String? salary;
@@ -28,6 +29,7 @@ class Job {
     required this.phone,
     this.latitude,
     this.longitude,
+    this.userEmail,
     required this.verified,
     this.urgent = false,
     this.salary,
@@ -41,6 +43,42 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     try {
+      String? normalizeString(dynamic value) {
+        if (value == null) return null;
+        final v = value.toString().trim();
+        if (v.isEmpty) return null;
+        final lower = v.toLowerCase();
+        if (lower == 'null' || lower == 'undefined' || lower == '0') return null;
+        return v;
+      }
+
+      int? readInt(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is num) return value.toInt();
+        if (value is String) return int.tryParse(value);
+        return null;
+      }
+
+      String formatMoney(int value) => value.toString();
+
+      String? buildSalary(dynamic value) {
+        final direct = normalizeString(value);
+        if (direct != null) return direct;
+
+        final min =
+            readInt(json["min_salary"] ?? json["salary_min"] ?? json["minSalary"]);
+        final max =
+            readInt(json["max_salary"] ?? json["salary_max"] ?? json["maxSalary"]);
+
+        if (min == null && max == null) return null;
+        if (min != null && max != null) {
+          return "₹${formatMoney(min)} - ₹${formatMoney(max)}";
+        }
+        if (min != null) return "₹${formatMoney(min)}";
+        return "₹${formatMoney(max!)}";
+      }
+
       // Handle id as either int or string
       int jobId;
       if (json["id"] is int) {
@@ -93,9 +131,15 @@ class Job {
         phone: json["phone"]?.toString() ?? "",
         latitude: json["latitude"]?.toString(),
         longitude: json["longitude"]?.toString(),
+        userEmail: json["user_email"]?.toString(),
         verified: json["is_verified"] == true || json["verified"] == true,
         urgent: json["urgent"] == true,
-        salary: json["salary"]?.toString(),
+        salary: buildSalary(
+          json["salary"] ??
+              json["salary_range"] ??
+              json["pay"] ??
+              json["payment"],
+        ),
         createdAt: json["created_at"]?.toString(),
         requiredWorkers: requiredWorkers,
         hiredCount: hiredCount,

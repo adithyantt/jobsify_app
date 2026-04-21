@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'services/connectivity_service.dart';
 import 'services/user_session.dart';
 import 'services/theme_service.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/otp_verification_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/admin/admin_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔌 Initialize connectivity service FIRST
+  await ConnectivityService.initialize();
+
   try {
     await UserSession.loadSession();
     await ThemeService.loadTheme();
@@ -38,6 +44,7 @@ class MyApp extends StatelessWidget {
           routes: {
             '/login': (context) => const LoginScreen(),
             '/register': (context) => const RegisterScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
             '/otp-verification': (context) {
               final args =
                   ModalRoute.of(context)?.settings.arguments

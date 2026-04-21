@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../models/notification_model.dart' as app_notification;
 
 import '../services/notification_service.dart';
+import '../services/user_session.dart';
 import '../services/job_service.dart';
 import '../services/worker_service.dart';
-import '../services/user_session.dart';
 import '../services/theme_service.dart';
 import 'jobs/job_detail_screen.dart';
+import 'messages/message_chat_screen.dart';
 import 'workers/worker_detail_screen.dart';
 import 'profile/profile_screen.dart';
 
@@ -173,6 +174,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          );
+          break;
+
+        case 'message':
+          if (!mounted) return;
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MessageChatScreen(conversationId: refId),
+            ),
           );
           break;
 

@@ -39,16 +39,36 @@ class UserSession {
     _saveToPrefs('user_token', v);
   }
 
+  // 🔐 SAFE TOKEN GETTER - Returns null if token is null/undefined/invalid
+  static String? get safeToken {
+    final t = token;
+    if (t == null || t == "null" || t == "undefined" || t.trim().isEmpty) {
+      return null;
+    }
+    return t;
+  }
+
+  // 🔐 SAFE BEARER TOKEN - Returns null if no valid token
+  static String? get safeBearerToken {
+    final t = safeToken;
+    if (t == null) {
+      return null;
+    }
+    return "Bearer $t";
+  }
+
+  static bool get isAdmin => role == 'admin';
+
   // ✅ LOGIN CHECK (SESSION STYLE)
   static bool get isLoggedIn => email != null;
 
-  static void clear() {
+  static Future<void> clear() async {
     userNameNotifier.value = null;
     emailNotifier.value = null;
     roleNotifier.value = null;
     tokenNotifier.value = null;
     phoneNotifier.value = null;
-    _clearPrefs();
+    await _clearPrefs();
   }
 
   // Load session from shared preferences

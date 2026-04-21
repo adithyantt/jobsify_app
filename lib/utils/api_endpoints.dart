@@ -1,44 +1,80 @@
+import 'package:flutter/foundation.dart';
+
 class ApiEndpoints {
-  // Fixed IP for both emulator & physical device (backend: uvicorn --host 0.0.0.0 --port 8000)
-  static const String baseUrl = "http://10.253.86.105:8000";
+  static const String _defaultLocalUrl = "http://127.0.0.1:8000";
+  static const String _defaultAndroidEmulatorUrl = "http://10.0.2.2:8000";
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    "API_BASE_URL",
+    defaultValue: "",
+  );
+
+  // Override with:
+  // flutter run --dart-define=API_BASE_URL=http://<your-ip>:8000
+  // Android emulator uses 10.0.2.2 to reach the host machine.
+  // Physical devices should use dart-define with your Wi-Fi IP.
+  static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl;
+    }
+    if (kIsWeb) {
+      return _defaultLocalUrl;
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return _defaultAndroidEmulatorUrl;
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return _defaultLocalUrl;
+    }
+  }
 
   // Auth
-  static const String login = "$baseUrl/auth/login";
+  static String get register => "$baseUrl/auth/register";
+  static String get verifyOtp => "$baseUrl/auth/verify-otp";
+  static String get login => "$baseUrl/auth/login";
+  static String get forgotPasswordRequest =>
+      "$baseUrl/auth/forgot-password/request";
+  static String get forgotPasswordReset => "$baseUrl/auth/forgot-password/reset";
 
   // Admin - Dashboard
-  static const String adminStats = "$baseUrl/admin/stats";
+  static String get adminStats => "$baseUrl/admin/stats";
 
   // Admin - Jobs
-  static const String pendingJobs = "$baseUrl/jobs/admin/pending";
-  static const String approveJob = "$baseUrl/jobs/admin/approve";
-  static const String rejectJob = "$baseUrl/jobs/admin/reject";
+  static String get pendingJobs => "$baseUrl/jobs/admin/pending";
+  static String get approveJob => "$baseUrl/jobs/admin/approve";
+  static String get rejectJob => "$baseUrl/jobs/admin/reject";
 
   // Admin - Providers
   // Workers (Admin)
-  static const String pendingWorkers = "$baseUrl/workers/admin/pending";
+  static String get pendingWorkers => "$baseUrl/workers/admin/pending";
 
-  static const String approveWorker = "$baseUrl/workers/admin/approve";
-  static const String deleteWorker = "$baseUrl/workers/admin/reject";
+  static String get approveWorker => "$baseUrl/workers/admin/approve";
+  static String get deleteWorker => "$baseUrl/workers/admin/reject";
 
   // Workers (Public)
-  static const String workers = "$baseUrl/workers";
+  static String get workers => "$baseUrl/workers";
 
   // Jobs (Public)
-  static const String jobs = "$baseUrl/jobs";
+  static String get jobs => "$baseUrl/jobs";
 
   // User-specific endpoints
-  static const String myJobs = "$baseUrl/jobs/my";
-  static const String myWorkers = "$baseUrl/workers/my";
+  static String get myJobs => "$baseUrl/jobs/my";
+  static String get myWorkers => "$baseUrl/workers/my";
 
   // Admin - Reports
-  static const String reports = "$baseUrl/admin/reports";
-  static const String takeReportAction =
+  static String get reports => "$baseUrl/admin/reports";
+  static String get takeReportAction =>
       "$baseUrl/admin/reports"; // append /{report_id}/action
 
   // Notifications
-  static const String notifications = "$baseUrl/notifications";
+  static String get notifications => "$baseUrl/notifications";
+  static String get messages => "$baseUrl/messages";
 
   // Admin - Users
-  static const String users = "$baseUrl/admin/users";
-  static const String blockUser = "$baseUrl/admin/users/block";
+  static String get users => "$baseUrl/admin/users";
+  static String get blockUser => "$baseUrl/admin/users/block";
 }

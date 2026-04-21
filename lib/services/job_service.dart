@@ -10,34 +10,66 @@ class JobService {
   // ===============================
   // 🔹 GET ALL VERIFIED JOBS (PUBLIC)
   // ===============================
-  static Future<List<Job>> fetchJobs() async {
-    final uri = Uri.parse(ApiEndpoints.jobs);
+  // ===============================
+  // 🔹 GET ALL VERIFIED JOBS (WITH FILTERS)
+  // ===============================
+  // Full filters: salary range, location (comma-separated), urgent
+  static Future<List<Job>> fetchJobs({
+    int page = 1,
+    int limit = 20,
+    String? category,
+    String? location,
+    bool? urgent,
+    double? minSalary,
+    double? maxSalary,
+  }) async {
+    final params = <String, String?>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (category != null) params['category'] = category;
+    if (location != null && location.isNotEmpty) params['location'] = location;
+    if (urgent != null) params['urgent'] = urgent.toString();
+    if (minSalary != null) params['min_salary'] = minSalary.toString();
+    if (maxSalary != null) params['max_salary'] = maxSalary.toString();
+
+    final nonNullParams = params.entries
+        .where((entry) => entry.value != null)
+        .fold<Map<String, String>>(
+          {},
+          (map, entry) => map..[entry.key] = entry.value!,
+        );
+    final uri = Uri.parse(
+      ApiEndpoints.jobs,
+    ).replace(queryParameters: nonNullParams);
 
     try {
       final response = await http
           .get(uri, headers: {"Content-Type": "application/json"})
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 15));
 
+      debugPrint("FETCH JOBS URL: $uri");
       debugPrint("FETCH JOBS STATUS: ${response.statusCode}");
       debugPrint("FETCH JOBS BODY: ${response.body}");
-
       if (response.statusCode == 200) {
-        if (response.body.isEmpty || response.body == '[]') {
+        final body = jsonDecode(response.body);
+        if (body == null || body is! Map) {
+          debugPrint(
+            "FETCH JOBS ERROR: Invalid JSON response (null or not Map)",
+          );
           return [];
         }
-
-        final List<dynamic> data = jsonDecode(response.body);
+        final List<dynamic> data = body["jobs"] ?? [];
         return data
             .map((e) => Job.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-
       throw Exception("Failed to load jobs (${response.statusCode})");
     } on TimeoutException {
       throw Exception("Server timeout");
     } catch (e) {
       debugPrint("FETCH JOBS ERROR: $e");
-      throw Exception("Fetch jobs failed");
+      throw Exception("Fetch jobs failed: $e");
     }
   }
 
@@ -133,9 +165,6 @@ class JobService {
     }
   }
 
-  // ===============================
-  // 🔹 FETCH MY JOBS (USER-SPECIFIC)
-  // ===============================
   static Future<List<Job>> fetchMyJobs(String email) async {
     if (email.isEmpty) {
       debugPrint("FETCH MY JOBS ERROR: Email is empty");
@@ -154,12 +183,21 @@ class JobService {
       debugPrint("FETCH MY JOBS BODY: ${response.body}");
 
       if (response.statusCode == 200) {
-        if (response.body.isEmpty || response.body == '[]') {
+        if (response.body.isEmpty) {
           return [];
         }
 
-        final List<dynamic> data = jsonDecode(response.body);
-        debugPrint("FETCH MY JOBS: Parsing ${data.length} jobs");
+        final dynamic decoded = jsonDecode(response.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("jobs") || decoded.containsKey("data"))) {
+          data = decoded["jobs"] ?? decoded["data"];
+        } else {
+          return [];
+        }
 
         final jobs = <Job>[];
         for (var i = 0; i < data.length; i++) {
@@ -168,29 +206,17 @@ class JobService {
             jobs.add(job);
           } catch (e) {
             debugPrint("FETCH MY JOBS: Error parsing job at index $i: $e");
-            debugPrint("FETCH MY JOBS: Problematic data: ${data[i]}");
           }
         }
-
-        debugPrint("FETCH MY JOBS: Successfully parsed ${jobs.length} jobs");
         return jobs;
       } else if (response.statusCode == 500) {
-        debugPrint("FETCH MY JOBS: Server error (500) - ${response.body}");
         throw Exception("Server error: ${response.body}");
       }
 
-      throw Exception(
-        "Failed to load my jobs (${response.statusCode}): ${response.body}",
-      );
-    } on TimeoutException {
-      debugPrint("FETCH MY JOBS ERROR: Server timeout");
-      throw Exception("Server timeout - please try again");
-    } on FormatException catch (e) {
-      debugPrint("FETCH MY JOBS ERROR: JSON parsing error - $e");
-      throw Exception("Invalid data format from server");
+      throw Exception("Failed to load my jobs (${response.statusCode})");
     } catch (e) {
       debugPrint("FETCH MY JOBS ERROR: $e");
-      throw Exception("Fetch my jobs failed: $e");
+      throw Exception("Fetch my jobs failed");
     }
   }
 
@@ -396,11 +422,22 @@ class JobService {
       debugPrint("FETCH SAVED JOBS BODY: ${response.body}");
 
       if (response.statusCode == 200) {
-        if (response.body.isEmpty || response.body == '[]') {
+        if (response.body.isEmpty) {
           return [];
         }
 
-        final List<dynamic> data = jsonDecode(response.body);
+        final dynamic decoded = jsonDecode(response.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("jobs") || decoded.containsKey("data"))) {
+          data = decoded["jobs"] ?? decoded["data"];
+        } else {
+          return [];
+        }
+
         return data
             .map((e) => Job.fromJson(e as Map<String, dynamic>))
             .toList();

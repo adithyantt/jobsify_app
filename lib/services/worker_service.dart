@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/worker_model.dart';
 import '../utils/api_endpoints.dart';
+import 'user_session.dart';
 
 class WorkerService {
   // ===============================
@@ -19,6 +20,8 @@ class WorkerService {
     bool? isAvailable,
     String? sortBy,
   }) async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
+
     // Build query parameters
     final queryParams = <String, String>{};
     if (minExperience != null) {
@@ -60,8 +63,21 @@ class WorkerService {
       debugPrint("FETCH WORKERS BODY: ${res.body}");
 
       if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body);
-        return data.map((e) => Worker.fromJson(e)).toList();
+        final dynamic decoded = jsonDecode(res.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("workers") || decoded.containsKey("data"))) {
+          data = decoded["workers"] ?? decoded["data"];
+        } else {
+          return [];
+        }
+
+        return data
+            .map((e) => Worker.fromJson(e as Map<String, dynamic>))
+            .toList();
       } else {
         throw Exception("Failed to load workers (${res.statusCode})");
       }
@@ -75,7 +91,12 @@ class WorkerService {
   // 🔹 GET WORKER BY ID (PUBLIC)
   // ===============================
   static Future<Worker?> fetchWorkerById(int workerId) async {
-    final uri = Uri.parse('${ApiEndpoints.workers}/$workerId');
+    final viewerEmail = UserSession.email;
+    final uri = Uri.parse('${ApiEndpoints.workers}/$workerId').replace(
+      queryParameters: viewerEmail != null && viewerEmail.isNotEmpty
+          ? {"viewer_email": viewerEmail}
+          : null,
+    );
 
     try {
       final res = await http.get(
@@ -191,8 +212,21 @@ class WorkerService {
       debugPrint("FETCH MY WORKERS BODY: ${res.body}");
 
       if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body);
-        return data.map((e) => Worker.fromJson(e)).toList();
+        final dynamic decoded = jsonDecode(res.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("workers") || decoded.containsKey("data"))) {
+          data = decoded["workers"] ?? decoded["data"];
+        } else {
+          return [];
+        }
+
+        return data
+            .map((e) => Worker.fromJson(e as Map<String, dynamic>))
+            .toList();
       } else {
         throw Exception("Failed to load my workers (${res.statusCode})");
       }

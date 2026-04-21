@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/auth/auth_shell.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,6 +10,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -16,7 +18,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool isLoading = false;
   bool showPassword = false;
-
   int? userId;
 
   @override
@@ -30,61 +31,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+    return AuthShell(
+      title: "Create your account",
+      subtitle: "",
+      footer: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("Already have an account? "),
+          GestureDetector(
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: const Text(
+              "Log in",
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      children: [
+        Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-
-              const Text(
-                "Jobsify",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B0C6D),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Create an account to get started",
-                style: TextStyle(color: Colors.grey),
-              ),
-
-              const SizedBox(height: 40),
-
-              _inputField(
+              AuthInputField(
                 label: "First Name",
                 controller: firstNameController,
                 textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                validator: (value) => _validateName(value, "First name"),
+                autofillHints: const [AutofillHints.givenName],
               ),
-              const SizedBox(height: 20),
-
-              _inputField(
+              const SizedBox(height: 18),
+              AuthInputField(
                 label: "Last Name",
                 controller: lastNameController,
                 textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                validator: (value) => _validateName(value, "Last name"),
+                autofillHints: const [AutofillHints.familyName],
               ),
-              const SizedBox(height: 20),
-
-              _inputField(label: "Email", controller: emailController),
-              const SizedBox(height: 20),
-
-              _inputField(
+              const SizedBox(height: 18),
+              AuthInputField(
+                label: "Email",
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: _validateEmail,
+                onChanged: _normalizeEmail,
+                autofillHints: const [AutofillHints.email],
+              ),
+              const SizedBox(height: 18),
+              AuthInputField(
                 label: "Password",
                 controller: passwordController,
                 isPassword: true,
                 showPassword: showPassword,
+                textInputAction: TextInputAction.done,
+                validator: _validatePassword,
+                onSubmitted: (_) => _registerUser(),
                 onToggle: () {
                   setState(() => showPassword = !showPassword);
                 },
+
+                autofillHints: const [AutofillHints.newPassword],
               ),
-
-              const SizedBox(height: 30),
-
+              const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -92,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B0C6D),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                   onPressed: isLoading ? null : _registerUser,
@@ -104,39 +121,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Already have an account? "),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                    child: const Text(
-                      "Sign in",
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
-  /// 🔐 REGISTER USER
   Future<void> _registerUser() async {
-    final error = _validateFields();
-    if (error != null) {
-      _showSnack(error);
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnack("Please correct the highlighted fields");
       return;
     }
 
@@ -144,125 +140,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final result = await AuthService.registerUser(
-        firstName: firstNameController.text.trim(),
-        lastName: lastNameController.text.trim(),
-        email: emailController.text.trim(),
+        firstName: _formatName(firstNameController.text),
+        lastName: _formatName(lastNameController.text),
+        email: emailController.text.trim().toLowerCase(),
         password: passwordController.text,
       );
 
       if (!mounted) return;
 
-      // AuthService.registerUser returns a Map with `success`, `message`, and `user_id`.
       final success = result["success"] == true;
       final message = result["message"] ?? "Registration failed";
 
-      if (success) {
+      if (success || message.contains("OTP resent")) {
         userId = result["user_id"];
         final fullName =
             "${firstNameController.text.trim()} ${lastNameController.text.trim()}";
-        // Clear navigation stack and go to OTP
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/otp-verification',
-          (route) => false, // This removes all previous routes
+          (route) => false,
           arguments: {
             'userId': userId,
             'userName': fullName,
-            'email': emailController.text.trim(),
+            'email': emailController.text.trim().toLowerCase(),
           },
         );
       } else {
-        // Check if it's an OTP resent message for existing unverified user
-        if (message.contains("OTP resent")) {
-          userId = result["user_id"];
-          final fullName =
-              "${firstNameController.text.trim()} ${lastNameController.text.trim()}";
-          // Clear navigation stack and go to OTP
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/otp-verification',
-            (route) => false, // This removes all previous routes
-            arguments: {
-              'userId': userId,
-              'userName': fullName,
-              'email': emailController.text.trim(),
-            },
-          );
-        } else {
-          _showSnack(message);
-        }
+        _showErrorSnack(message);
       }
-    } catch (e) {
-      _showSnack("Unable to connect to server");
+    } catch (_) {
+      _showErrorSnack("Unable to connect to server");
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  String? _validateFields() {
-    if (firstNameController.text.trim().length < 1) {
-      return "First name is required";
+  String _formatName(String value) {
+    return value
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+          final lower = part.toLowerCase();
+          return "${lower[0].toUpperCase()}${lower.substring(1)}";
+        })
+        .join(' ');
+  }
+
+  void _normalizeEmail(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == value) return;
+    emailController.value = TextEditingValue(
+      text: normalized,
+      selection: TextSelection.collapsed(offset: normalized.length),
+    );
+  }
+
+  String? _validateName(String? value, String fieldName) {
+    final normalized = value?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return "$fieldName is required";
     }
-    if (lastNameController.text.trim().length < 1) {
-      return "Last name is required";
+    if (!RegExp(r"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$").hasMatch(normalized)) {
+      return "$fieldName can only contain letters";
     }
-    if (!RegExp(
-      r'^[^@]+@[^@]+\.[^@]+$',
-    ).hasMatch(emailController.text.trim())) {
-      return "Enter a valid email address";
-    }
-    if (passwordController.text.length < 8 ||
-        !RegExp(
-          r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
-        ).hasMatch(passwordController.text)) {
-      return "Password must be at least 8 characters with uppercase, lowercase, and number";
+    if (normalized.length < 2) {
+      return "$fieldName must be at least 2 characters";
     }
     return null;
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  String? _validateEmail(String? value) {
+    final email = value?.trim().toLowerCase() ?? '';
+    if (email.isEmpty) {
+      return "Email is required";
+    }
+    if (!RegExp(r'^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$').hasMatch(email)) {
+      return "Enter a valid email address";
+    }
+    return null;
   }
 
-  Widget _inputField({
-    required String label,
-    required TextEditingController controller,
-    bool isPassword = false,
-    bool showPassword = false,
-    VoidCallback? onToggle,
-    TextInputType keyboardType = TextInputType.text,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          obscureText: isPassword && !showPassword,
-          keyboardType: keyboardType,
-          textCapitalization: textCapitalization,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            suffixIcon: isPassword
-                ? IconButton(
-                    icon: Icon(
-                      showPassword ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: onToggle,
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
+  String? _validatePassword(String? value) {
+    final password = value ?? '';
+    if (password.isEmpty) {
+      return "Password is required";
+    }
+    if (password.length < 8 ||
+        !RegExp(
+          r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$',
+        ).hasMatch(password)) {
+      return "Password must include uppercase, lowercase, number, and special character";
+    }
+    return null;
+  }
+
+  void _showErrorSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

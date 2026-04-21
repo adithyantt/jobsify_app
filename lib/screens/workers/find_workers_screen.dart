@@ -5,18 +5,17 @@ import '../../services/worker_service.dart';
 import '../../services/location_service.dart';
 import 'worker_detail_screen.dart';
 import 'add_worker_screen.dart';
+import '../../../utils/offline_handler.dart';
 
 /// 🎨 COLORS
-const Color kRed = Color(0xFFFF1E2D);
 const Color kBlue = Color(0xFF6B7280);
+const Color kHeaderGrey = Color(0xFF6B7280);
 const Color kYellow = Color(0xFFFFC107);
 const Color kGreen = Color(0xFF16A34A);
-const Color kLightBlue = Color(0xFF87CEEB);
 
 class FindWorkersScreen extends StatefulWidget {
   const FindWorkersScreen({super.key});
   static const Color primaryColor = Color(0xFF1B0C6D);
-  static const Color kGreen = Color(0xFF10B981);
 
   @override
   State<FindWorkersScreen> createState() => _FindWorkersScreenState();
@@ -52,6 +51,8 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
   String sortBy =
       'distance'; // 'distance', 'experience_high', 'experience_low', 'rating_high', 'rating_low'
 
+  String? lastError;
+
   /// 📍 AVAILABLE LOCATIONS (extracted from workers dynamically)
   List<String> availableLocations = [];
 
@@ -71,6 +72,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     super.initState();
     _loadSavedFilters();
     _initEverything();
+    _loadWorkers(); // Load workers without location first
   }
 
   /// 💾 LOAD SAVED FILTERS
@@ -178,7 +180,14 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
         isLoading = false;
         hasError = false;
       });
-    } catch (_) {
+    } catch (e) {
+      lastError = e.toString();
+      if (mounted) {
+        OfflineHandler.showErrorSnackBar(
+          context,
+          Exception('Failed to load workers: $e'),
+        );
+      }
       setState(() {
         hasError = true;
         isLoading = false;
@@ -220,8 +229,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     if (selectedDaysFilter.isNotEmpty) {
       filtered = filtered.where((w) {
         if (w.availabilityType == 'everyday') return true;
-        if (w.availableDays == null) return false;
-        final workerDays = w.availableDays!.split(',');
+        final workerDays = w.availableDays?.split(',') ?? [];
         return selectedDaysFilter.any((day) => workerDays.contains(day));
       }).toList();
     }
@@ -251,12 +259,23 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     });
   }
 
+  Future<void> _refreshWorkers() async {
+    setState(() {
+      isLoading = true;
+      hasError = false;
+      lastError = null;
+    });
+    await _loadWorkers();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: kLightBlue,
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -279,280 +298,299 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          /// 🔵 HEADER
-          SliverToBoxAdapter(
-            child: Container(
-              color: kBlue,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        locationLoaded
-                            ? "Workers near you"
-                            : "Location not available",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      if (!locationLoaded) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.refresh,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          onPressed: _initEverything,
-                          tooltip: 'Retry location',
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: kYellow, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      onChanged: (value) {
-                        searchQuery = value.toLowerCase();
-                        _applyFilters();
-                        setState(() {});
-                      },
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search, color: Colors.white),
-                        hintText: "Search workers...",
-                        hintStyle: TextStyle(color: Colors.white70),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  /// 🔄 SORT & FILTER ROW
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: RefreshIndicator(
+        onRefresh: _refreshWorkers,
+        child: CustomScrollView(
+          slivers: [
+            /// 🔵 HEADER
+            SliverToBoxAdapter(
+              child: Container(
+                color: kHeaderGrey,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        /// 🔄 SORT DROPDOWN
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: sortBy,
-                            dropdownColor: kBlue,
-                            icon: const Icon(
-                              Icons.sort,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'distance',
-                                child: Text('Sort by Distance'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'experience_high',
-                                child: Text('Experience: High to Low'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'experience_low',
-                                child: Text('Experience: Low to High'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'rating_high',
-                                child: Text('Rating: High to Low'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'rating_low',
-                                child: Text('Rating: Low to High'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  sortBy = value;
-                                });
-                                _saveFilters();
-                                _applyFilters();
-                              }
-                            },
-                          ),
+                        Icon(Icons.location_on, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          locationLoaded
+                              ? "Workers near you"
+                              : "Location not available",
+                          style: const TextStyle(color: Colors.white),
                         ),
-
-                        /// 🎯 FILTER BUTTON WITH BADGE
-                        Stack(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.tune,
-                                color: _activeFilterCount > 0
-                                    ? kYellow
-                                    : Colors.white,
-                                size: 24,
+                        if (!locationLoaded) ...[
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white24,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
                               ),
-                              onPressed: _showFilterBottomSheet,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
-                            if (_activeFilterCount > 0)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: kRed,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    '$_activeFilterCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                            onPressed: _initEverything,
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text(
+                              'Retry',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: primary.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TextField(
+                        onChanged: (value) {
+                          searchQuery = value.toLowerCase();
+                          _applyFilters();
+                          setState(() {});
+                        },
+                        style: const TextStyle(color: kYellow),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white12,
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white,
+                          ),
+                          hintText: "Search workers...",
+                          hintStyle: const TextStyle(color: kYellow),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    /// 🔄 SORT & FILTER ROW
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          /// 🔄 SORT DROPDOWN
+                          DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: sortBy,
+                              dropdownColor: kHeaderGrey,
+                              icon: const Icon(
+                                Icons.sort,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'distance',
+                                  child: Text('Sort by Distance'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'experience_high',
+                                  child: Text('Experience: High to Low'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'experience_low',
+                                  child: Text('Experience: Low to High'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'rating_high',
+                                  child: Text('Rating: High to Low'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'rating_low',
+                                  child: Text('Rating: Low to High'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    sortBy = value;
+                                  });
+                                  _saveFilters();
+                                  _applyFilters();
+                                }
+                              },
+                            ),
+                          ),
+
+                          /// 🎯 FILTER BUTTON WITH BADGE
+                          Stack(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.tune,
+                                  color: _activeFilterCount > 0
+                                      ? kYellow
+                                      : Colors.white,
+                                  size: 24,
+                                ),
+                                onPressed: _showFilterBottomSheet,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              if (_activeFilterCount > 0)
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '$_activeFilterCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          /// 📊 WORKERS COUNT MESSAGE
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                "${allWorkers.length} workers available",
-                style: TextStyle(
-                  color:
-                      Theme.of(context).textTheme.bodyLarge?.color ??
-                      Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  ],
                 ),
               ),
             ),
-          ),
 
-          /// 🟠 CATEGORY CHIPS
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 56,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                itemBuilder: (_, i) {
-                  final c = categories[i];
-                  final selected = c == selectedCategory;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: ChoiceChip(
-                      label: Text(c),
-                      selected: selected,
-                      selectedColor: kRed,
-                      labelStyle: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : Theme.of(context).textTheme.bodyLarge?.color ??
-                                  Colors.black,
-                      ),
-
-                      onSelected: (_) {
-                        selectedCategory = c;
-                        _applyFilters();
-                        setState(() {});
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          /// 🧾 WORKER LIST
-          if (isLoading)
-            const SliverToBoxAdapter(
+            /// 📊 WORKERS COUNT MESSAGE
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            )
-          else if (hasError)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: Text("Failed to load workers")),
-              ),
-            )
-          else
-            FutureBuilder<List<Worker>>(
-              future: Future.value(allWorkers),
-              builder: (context, snapshot) {
-                List<Worker> workers = allWorkers;
-
-                /// 🏙️ EXTRACT UNIQUE LOCATIONS
-                availableLocations =
-                    workers
-                        .map((w) => w.location.split(',').first.trim())
-                        .toSet()
-                        .toList()
-                      ..sort();
-
-                if (visibleWorkers.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          "No workers found",
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).textTheme.bodyLarge?.color ??
-                                Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _workerCard(visibleWorkers[i]),
-                    childCount: visibleWorkers.length,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Text(
+                  "${allWorkers.length} workers available",
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
-                );
-              },
+                ),
+              ),
             ),
-        ],
+
+            /// 🟠 CATEGORY CHIPS
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 56,
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length,
+                  itemBuilder: (_, i) {
+                    final c = categories[i];
+                    final selected = c == selectedCategory;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: ChoiceChip(
+                        label: Text(c),
+                        selected: selected,
+                        selectedColor: primary,
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? Colors.white
+                              : Theme.of(context).textTheme.bodyLarge?.color ??
+                                    Colors.black,
+                        ),
+
+                        onSelected: (_) {
+                          selectedCategory = c;
+                          _applyFilters();
+                          setState(() {});
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            /// 🧾 WORKER LIST
+            if (isLoading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              )
+            else if (hasError)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.wifi_off, size: 64, color: Colors.orange),
+                      const SizedBox(height: 16),
+                      Text(
+                        lastError != null &&
+                                (lastError!.contains('internet') ||
+                                    lastError!.contains('NoInternetException'))
+                            ? 'No internet connection'
+                            : 'Failed to load workers',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
+                        onPressed: _refreshWorkers,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (visibleWorkers.isEmpty)
+              SliverToBoxAdapter(
+                child: const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text("No workers found")),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _workerCard(visibleWorkers[i]),
+                  childCount: visibleWorkers.length,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _workerCard(Worker worker) {
+    final primary = Theme.of(context).primaryColor;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 12),
       padding: const EdgeInsets.all(14),
@@ -566,7 +604,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
         children: [
           Row(
             children: [
-              _tag(worker.role, kRed),
+              _tag(worker.role, primary),
               if (worker.isVerified) _tag("Verified", kGreen),
             ],
           ),
@@ -587,21 +625,20 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color:
-                  Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.color?.withValues(alpha: 153) ??
-                  Colors.grey,
+                  (Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey)
+                      .withValues(alpha: 0.6),
             ),
           ),
 
           const SizedBox(height: 10),
           _iconText(Icons.location_on, worker.location),
           _iconText(Icons.work, "${worker.experience} years"),
+          _iconText(Icons.event_available, _availabilityLabel(worker)),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: kRed),
+              style: ElevatedButton.styleFrom(backgroundColor: primary),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -621,7 +658,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
   Widget _iconText(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: kRed),
+        Icon(icon, size: 14, color: Theme.of(context).primaryColor),
         const SizedBox(width: 4),
         Text(text),
       ],
@@ -640,26 +677,33 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
     );
   }
 
-  /// Helper method to get display name - prefers first_name + last_name, falls back to name
-  String _getWorkerDisplayName(Worker worker) {
-    
-    final firstName = worker.firstName;
-    final lastName = worker.lastName;
-    if (firstName != null &&
-        lastName != null &&
-        firstName.isNotEmpty &&
-        lastName.isNotEmpty) {
-      return "$firstName $lastName";
-    }
-    return worker.name;
-  }
-
   double? _distanceToWorker(Worker worker) {
     if (userLat == null || userLng == null) return null;
     final lat = double.tryParse(worker.latitude ?? "");
     final lng = double.tryParse(worker.longitude ?? "");
     if (lat == null || lng == null) return null;
     return LocationService.distanceKm(userLat!, userLng!, lat, lng);
+  }
+
+  String _availabilityLabel(Worker worker) {
+    if (worker.isAvailable == false ||
+        worker.availabilityType == 'not_available') {
+      return "Currently unavailable";
+    }
+    final days =
+        worker.availableDays
+            ?.split(',')
+            .map((d) => d.trim())
+            .where((d) => d.isNotEmpty)
+            .toList() ??
+        [];
+    if (worker.availabilityType == 'selected_days' && days.isNotEmpty) {
+      return "Available: ${days.join(', ')}";
+    }
+    if (worker.availabilityType == 'selected_days') {
+      return "Available on selected days";
+    }
+    return "Available every day";
   }
 
   /// 📻 CUSTOM RADIO OPTION
@@ -682,7 +726,9 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? kLightBlue : Colors.grey,
+                  color: isSelected
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
                   width: 2,
                 ),
               ),
@@ -691,7 +737,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                       margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: kLightBlue,
+                        color: Theme.of(context).primaryColor,
                       ),
                     )
                   : null,
@@ -701,7 +747,9 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
               label,
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected ? kLightBlue : Colors.black87,
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : Colors.black87,
               ),
             ),
           ],
@@ -733,7 +781,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: kLightBlue,
+                    color: Theme.of(context).primaryColor,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(24),
                     ),
@@ -956,8 +1004,10 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                             return FilterChip(
                               label: Text(day),
                               selected: isSelected,
-                              selectedColor: kLightBlue.withValues(alpha: 0.3),
-                              checkmarkColor: kLightBlue,
+                              selectedColor: Theme.of(
+                                context,
+                              ).primaryColor.withValues(alpha: 0.3),
+                              checkmarkColor: Theme.of(context).primaryColor,
                               onSelected: (selected) {
                                 setModalState(() {
                                   if (selected) {
@@ -1019,8 +1069,10 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                             return FilterChip(
                               label: Text(location),
                               selected: isSelected,
-                              selectedColor: kLightBlue.withValues(alpha: 0.2),
-                              checkmarkColor: kLightBlue,
+                              selectedColor: Theme.of(
+                                context,
+                              ).primaryColor.withValues(alpha: 0.2),
+                              checkmarkColor: Theme.of(context).primaryColor,
                               onSelected: (selected) {
                                 setModalState(() {
                                   if (selected) {
@@ -1057,7 +1109,7 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: kLightBlue,
+                          backgroundColor: Theme.of(context).primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

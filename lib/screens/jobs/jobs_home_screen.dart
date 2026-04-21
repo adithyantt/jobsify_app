@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'find_job_screen.dart';
 import 'post_job_screen.dart';
 
-/// 🎨 COLORS
-const Color kRed = Color(0xFFFF1E2D);
-
 class JobsHomeScreen extends StatelessWidget {
   const JobsHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: kRed,
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
         title: const Text("Jobs"),
         centerTitle: true,
       ),
@@ -79,6 +79,8 @@ class JobsHomeScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final primary = Theme.of(context).primaryColor;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -99,8 +101,8 @@ class JobsHomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: kRed.withValues(alpha: 0.1),
-              child: Icon(icon, color: kRed, size: 28),
+              backgroundColor: primary.withValues(alpha: 0.1),
+              child: Icon(icon, color: primary, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(

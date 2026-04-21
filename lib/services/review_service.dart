@@ -1,21 +1,37 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/review_model.dart';
-import '../utils/api_config.dart';
+import '../utils/api_endpoints.dart';
 import 'user_session.dart';
+
+export '../services/connectivity_service.dart' show NoInternetException;
 
 class ReviewService {
   // Get all reviews for a worker
   static Future<List<Review>> getWorkerReviews(int workerId) async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/reviews/worker/$workerId'),
+        Uri.parse('${ApiEndpoints.baseUrl}/reviews/worker/$workerId'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Review.fromJson(json)).toList();
+        final dynamic decoded = jsonDecode(response.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("reviews") || decoded.containsKey("data"))) {
+          data = decoded["reviews"] ?? decoded["data"];
+        } else {
+          return [];
+        }
+
+        return data
+            .map((json) => Review.fromJson(json as Map<String, dynamic>))
+            .toList();
       } else {
         throw Exception('Failed to load reviews: ${response.body}');
       }
@@ -28,9 +44,10 @@ class ReviewService {
   static Future<WorkerRatingSummary> getWorkerRatingSummary(
     int workerId,
   ) async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/reviews/worker/$workerId/summary'),
+        Uri.parse('${ApiEndpoints.baseUrl}/reviews/worker/$workerId/summary'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -50,30 +67,30 @@ class ReviewService {
     int rating,
     String? comment,
   ) async {
+    if (rating < 1 || rating > 5) {
+      throw Exception('Rating must be between 1 and 5');
+    }
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
-      final token = UserSession.token;
-      if (token == null) {
-        throw Exception('Please login to add a review');
+      final headers = {'Content-Type': 'application/json'};
+      if (UserSession.safeToken != null) {
+        headers['Authorization'] = 'Bearer ${UserSession.safeToken}';
+      } else if (UserSession.isLoggedIn && UserSession.email != null) {
+        headers['X-User-Email'] = UserSession.email!;
+      } else {
+        throw Exception('Please login to add review');
       }
 
-      print('DEBUG: Adding review - workerId: $workerId, rating: $rating');
-      print('DEBUG: Token: ${token.substring(0, 20)}...');
-
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/reviews'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('${ApiEndpoints.baseUrl}/reviews'),
+        headers: headers,
         body: jsonEncode({
           'worker_id': workerId,
+          'reviewer_email': UserSession.email!,
           'rating': rating,
           'comment': comment,
         }),
       );
-
-      print('DEBUG: Response status: ${response.statusCode}');
-      print('DEBUG: Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Review.fromJson(jsonDecode(response.body));
@@ -85,7 +102,6 @@ class ReviewService {
         );
       }
     } catch (e) {
-      print('DEBUG: Error in addReview: $e');
       throw Exception('Error adding review: $e');
     }
   }
@@ -96,20 +112,26 @@ class ReviewService {
     int rating,
     String? comment,
   ) async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
-      final token = UserSession.token;
-      if (token == null) {
+      if (!UserSession.isLoggedIn) {
+        throw Exception('Please login to update review');
+      }
+
+      final headers = {'Content-Type': 'application/json'};
+      if (UserSession.safeToken != null) {
+        headers['Authorization'] = 'Bearer ${UserSession.safeToken}';
+      } else if (UserSession.isLoggedIn && UserSession.email != null) {
+        headers['X-User-Email'] = UserSession.email!;
+      } else {
         throw Exception('Please login to update review');
       }
 
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/reviews/$reviewId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('${ApiEndpoints.baseUrl}/reviews/$reviewId'),
+        headers: headers,
         body: jsonEncode({
-          'worker_id': 0, // Not needed for update but required by schema
+          'reviewer_email': UserSession.email!,
           'rating': rating,
           'comment': comment,
         }),
@@ -128,18 +150,26 @@ class ReviewService {
 
   // Delete a review (requires authentication)
   static Future<void> deleteReview(int reviewId) async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
-      final token = UserSession.token;
-      if (token == null) {
+      if (!UserSession.isLoggedIn) {
         throw Exception('Please login to delete review');
       }
 
+      final headers = {'Content-Type': 'application/json'};
+      if (UserSession.safeToken != null) {
+        headers['Authorization'] = 'Bearer ${UserSession.safeToken}';
+      } else if (UserSession.isLoggedIn && UserSession.email != null) {
+        headers['X-User-Email'] = UserSession.email!;
+      } else {
+        throw Exception('Please login to perform this action');
+      }
+
       final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/reviews/$reviewId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse(
+          '${ApiEndpoints.baseUrl}/reviews/$reviewId?reviewer_email=${Uri.encodeComponent(UserSession.email!)}',
+        ),
+        headers: headers,
       );
 
       if (response.statusCode != 200) {
@@ -153,23 +183,42 @@ class ReviewService {
 
   // Get my reviews (requires authentication)
   static Future<List<Review>> getMyReviews() async {
+    // Removed strict connectivity check - now tries API + catches real HTTP errors
     try {
-      final token = UserSession.token;
-      if (token == null) {
+      if (!UserSession.isLoggedIn) {
         throw Exception('Please login to view your reviews');
       }
 
+      final headers = {'Content-Type': 'application/json'};
+      if (UserSession.safeToken != null) {
+        headers['Authorization'] = 'Bearer ${UserSession.safeToken}';
+      } else {
+        headers['X-User-Email'] = UserSession.email!;
+      }
+
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/reviews/my'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse(
+          '${ApiEndpoints.baseUrl}/reviews/my?reviewer_email=${Uri.encodeComponent(UserSession.email!)}',
+        ),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Review.fromJson(json)).toList();
+        final dynamic decoded = jsonDecode(response.body);
+        List<dynamic> data;
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map &&
+            (decoded.containsKey("reviews") || decoded.containsKey("data"))) {
+          data = decoded["reviews"] ?? decoded["data"];
+        } else {
+          return [];
+        }
+
+        return data
+            .map((json) => Review.fromJson(json as Map<String, dynamic>))
+            .toList();
       } else {
         throw Exception('Failed to load your reviews: ${response.body}');
       }

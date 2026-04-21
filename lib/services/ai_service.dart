@@ -56,6 +56,7 @@ class AIService {
   }
 
   static Future<String> sendMessage(String message) async {
+    // Connectivity check handled in OfflineHandler - removed to avoid double check
     // Get API key and model
     final apiKey = await _getApiKey();
     final model = await _getModel();
@@ -66,20 +67,22 @@ class AIService {
       );
     }
 
-    final response = await http.post(
-      Uri.parse('https://api.blackbox.ai/api/chat'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        'messages': [
-          {'role': 'user', 'content': message},
-        ],
-        'model': model,
-        'max_tokens': 1000,
-      }),
-    );
+    final response = await http
+        .post(
+          Uri.parse('https://api.blackbox.ai/api/chat'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $apiKey',
+          },
+          body: jsonEncode({
+            'messages': [
+              {'role': 'user', 'content': message},
+            ],
+            'model': model,
+            'max_tokens': 1000,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -88,10 +91,6 @@ class AIService {
     } else {
       throw Exception('Failed to get AI response: ${response.statusCode}');
     }
-  }
-
-  static String _generateCacheKey(String message) {
-    return message.hashCode.toString();
   }
 
   static Future<void> updateApiKey(String newKey) async {

@@ -1,4 +1,8 @@
 class ApiConfig {
-  // Fixed for both emulator & physical device
-  static const String baseUrl = "http://10.253.86.105:8000";
+  // Deprecated. Prefer ApiEndpoints.baseUrl so web/desktop can default to localhost
+  // and physical devices can override with --dart-define=API_BASE_URL=...
+  static const String baseUrl = String.fromEnvironment(
+    "API_BASE_URL",
+    defaultValue: "http://10.0.2.2:8000",
+  );
 }

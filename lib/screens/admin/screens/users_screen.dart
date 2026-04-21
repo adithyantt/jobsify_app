@@ -1,9 +1,11 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import '../../../services/user_session.dart';
-import '../admin_dashboard.dart';
 import '../../../utils/api_endpoints.dart';
+import '../admin_dashboard.dart';
 
 const Color kPrimary = Color(0xFF1B0C6D);
 const Color kSurface = Color(0xFFF7F7FB);
@@ -24,7 +26,6 @@ class _UsersScreenState extends State<UsersScreen> {
     _reload();
   }
 
-  // 🔐 Helper method to get auth headers safely
   Map<String, String> _getAuthHeaders() {
     final token = UserSession.token;
     if (token == null || token.isEmpty) {
@@ -134,7 +135,10 @@ class _UsersScreenState extends State<UsersScreen> {
                       children: [
                         Text(user.email),
                         const SizedBox(height: 4),
-                        Text(statusLabel, style: TextStyle(color: statusColor)),
+                        Text(
+                          "${user.roleLabel} • $statusLabel",
+                          style: TextStyle(color: statusColor),
+                        ),
                       ],
                     ),
                     isThreeLine: true,
@@ -158,40 +162,41 @@ class _UsersScreenState extends State<UsersScreen> {
 
 class AdminUser {
   final int id;
-  final String? firstName;
-  final String? lastName;
-  final String? name; // For backward compatibility
+  final String firstName;
+  final String lastName;
   final String email;
   final String role;
   final bool isBlocked;
 
   const AdminUser({
     required this.id,
-    this.firstName,
-    this.lastName,
-    this.name,
+    required this.firstName,
+    required this.lastName,
     required this.email,
     required this.role,
     required this.isBlocked,
   });
 
-  /// Returns the display name - prefers first_name + last_name if available, falls back to name
   String get displayName {
-    if (firstName != null &&
-        lastName != null &&
-        firstName!.isNotEmpty &&
-        lastName!.isNotEmpty) {
-      return "$firstName $lastName";
+    final fullName = [firstName, lastName]
+        .where((part) => part.trim().isNotEmpty)
+        .join(' ');
+    if (fullName.isNotEmpty) {
+      return fullName;
     }
-    return name ?? 'Unknown';
+    if (email.contains('@')) {
+      return email.split('@').first;
+    }
+    return 'Unknown';
   }
+
+  String get roleLabel => role == 'admin' ? 'Admin' : 'User';
 
   factory AdminUser.fromJson(Map<String, dynamic> json) {
     return AdminUser(
       id: json['id'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      name: json['name'],
+      firstName: (json['first_name'] ?? '').toString(),
+      lastName: (json['last_name'] ?? '').toString(),
       email: json['email'] ?? 'No email',
       role: json['role'] ?? 'user',
       isBlocked: json['is_blocked'] ?? json['blocked'] ?? false,

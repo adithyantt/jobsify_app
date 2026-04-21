@@ -31,19 +31,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
+    _checkSessionAndLoadStats();
+  }
+
+  Future<void> _checkSessionAndLoadStats() async {
+    // Guard: Check session before loading
+    if (!UserSession.isLoggedIn || !UserSession.isAdmin) {
+      debugPrint("Dashboard: Invalid session - redirecting to login");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Admin access required. Please login as admin."),
+          ),
+        );
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
+      return;
+    }
     _loadStats();
   }
 
   // 🔐 Helper method to get auth headers safely
   Map<String, String> _getAuthHeaders() {
-    final token = UserSession.token;
-    if (token == null || token.isEmpty) {
+    final bearerToken = UserSession.safeBearerToken;
+    if (bearerToken == null) {
       throw Exception("Authentication required. Please login.");
     }
-    return {
-      "Authorization": "Bearer $token",
-      "Content-Type": "application/json",
-    };
+    return {"Authorization": bearerToken, "Content-Type": "application/json"};
   }
 
   Future<void> _loadStats() async {
@@ -64,8 +78,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
           isLoadingStats = false;
         });
         return;
+      } else if (res.statusCode == 401) {
+        throw Exception("Admin session expired. Logging out...");
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Dashboard stats error: $e");
+      if (!mounted) return;
+
+      // Auth error → logout
+      if (e.toString().contains("401") ||
+          e.toString().contains("Authentication")) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Session expired. Redirecting to login..."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        await UserSession.clear();
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/login',
+            (route) => false,
+          );
+        }
+        return;
+      }
+    }
 
     if (!mounted) return;
     setState(() {
@@ -186,6 +226,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       color: kAccent,
                       onTap: () =>
                           _open(context, const JobVerificationScreen()),
+                      isDark: isDark,
+                    ),
+                    _actionCard(
+                      title: "Verify Job Providers",
+                      subtitle: "Check new provider applications",
+                      icon: Icons.badge,
+                      color: const Color(0xFF0EA5E9),
+                      onTap: () =>
+                          _open(context, const ProviderVerificationScreen()),
                       isDark: isDark,
                     ),
                     _actionCard(
