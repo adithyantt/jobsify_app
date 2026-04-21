@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../models/job_model.dart';
+import '../../services/job_service.dart';
 import '../../utils/salary_utils.dart';
 import 'job_detail_screen.dart';
-
-/// COLORS (UI ONLY)
-const Color kRed = Color(0xFFFF1E2D);
 
 class JobsListScreen extends StatefulWidget {
   final String category;
@@ -18,56 +17,39 @@ class JobsListScreen extends StatefulWidget {
 class _JobsListScreenState extends State<JobsListScreen> {
   int? minSalary;
   int? maxSalary;
+  late Future<List<Job>> _jobsFuture;
 
-  /// 🔹 BACKEND-SAFE FALLBACK JOBS
-  List<Map<String, dynamic>> get jobs => [
-    {
-      "category": "Plumber",
-      "title": "Need Plumber for Kitchen Repair",
-      "desc": "Kitchen sink and pipe repair needed urgently.",
-      "location": "Sector 15, Delhi",
-      "time": "Posted 2 hours ago",
-      "salary": "₹800-1000/day",
-      "urgent": true,
-      "verified": true,
-      "phone": "+91 98765 43210",
-    },
-    {
-      "category": "Painter",
-      "title": "House Painting Work",
-      "desc": "3 BHK apartment painting work required.",
-      "location": "Green Park, Mumbai",
-      "time": "Posted 5 hours ago",
-      "salary": "₹15,000 (complete work)",
-      "urgent": false,
-      "verified": true,
-      "phone": "+91 99887 66554",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _jobsFuture = _loadJobs();
+  }
 
-  List<Map<String, dynamic>> get filteredJobs {
-    var filtered = widget.category == "All"
-        ? jobs
-        : jobs.where((j) => j["category"] == widget.category).toList();
+  Future<List<Job>> _loadJobs() {
+    return JobService.fetchJobs(
+      category: widget.category == 'All' ? null : widget.category,
+      limit: 100,
+    );
+  }
 
-    // Apply salary filter
-    if (minSalary != null || maxSalary != null) {
-      filtered = filtered.where((job) {
-        return SalaryUtils.isSalaryInRange(job["salary"], minSalary, maxSalary);
-      }).toList();
+  List<Job> _applySalaryFilter(List<Job> jobs) {
+    if (minSalary == null && maxSalary == null) {
+      return jobs;
     }
 
-    return filtered;
+    return jobs.where((job) {
+      return SalaryUtils.isSalaryInRange(job.salary, minSalary, maxSalary);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-
-      /// 🔴 APP BAR (SIMPLE & CLEAN)
       appBar: AppBar(
-        backgroundColor: kRed,
+        backgroundColor: primary,
         elevation: 0,
         title: Text(widget.category),
         leading: IconButton(
@@ -86,33 +68,78 @@ class _JobsListScreenState extends State<JobsListScreen> {
           ),
         ],
       ),
+      body: FutureBuilder<List<Job>>(
+        future: _jobsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      body: filteredJobs.isEmpty
-          ? const Center(
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Failed to load jobs',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _jobsFuture = _loadJobs();
+                        });
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final filteredJobs = _applySalaryFilter(snapshot.data ?? const []);
+
+          if (filteredJobs.isEmpty) {
+            return const Center(
               child: Text(
-                "No jobs found",
+                'no jobs found',
                 style: TextStyle(color: Colors.grey),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredJobs.length,
-              itemBuilder: (_, i) {
-                final job = filteredJobs[i];
-                return _jobCard(context, job);
-              },
-            ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredJobs.length,
+            itemBuilder: (_, i) => _jobCard(context, filteredJobs[i]),
+          );
+        },
+      ),
     );
   }
 
-  /// 🧾 JOB CARD (MATCHES BROWSE JOBS)
-  Widget _jobCard(BuildContext context, Map<String, dynamic> job) {
-    final jobObj = Job.fromJson(job);
+  Widget _jobCard(BuildContext context, Job job) {
+    final primary = Theme.of(context).primaryColor;
+    final salaryText = _salaryLabel(job);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => JobDetailScreen(job: jobObj)),
+          MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
         );
       },
       child: Container(
@@ -126,60 +153,44 @@ class _JobsListScreenState extends State<JobsListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// TAGS
             Row(
               children: [
-                _tag(job["category"], kRed),
-                if (job["urgent"]) _tag("URGENT", Colors.orange),
-                if (job["verified"]) _tag("Verified", Colors.green),
+                _tag(job.category, primary),
+                if (job.urgent) _tag('URGENT', Colors.orange),
+                if (job.verified) _tag('Verified', Colors.green),
               ],
             ),
-
             const SizedBox(height: 8),
-
-            /// TITLE
             Text(
-              job["title"],
+              job.title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
-
             const SizedBox(height: 6),
-
-            /// DESCRIPTION
             Text(
-              job["desc"],
+              job.description,
               style: TextStyle(
                 color: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.color?.withValues(alpha: 153),
+                ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
               ),
             ),
-
             const SizedBox(height: 8),
-
-            /// LOCATION
             Row(
               children: [
-                const Icon(Icons.location_on, size: 14, color: Colors.red),
+                Icon(Icons.location_on, size: 14, color: primary),
                 const SizedBox(width: 4),
-                Text(job["location"]),
+                Expanded(child: Text(job.location)),
               ],
             ),
-
             const SizedBox(height: 4),
-
-            /// TIME
             Row(
               children: [
-                const Icon(Icons.access_time, size: 14, color: Colors.red),
+                Icon(Icons.access_time, size: 14, color: primary),
                 const SizedBox(width: 4),
-                Text(job["time"]),
+                Expanded(child: Text(_postedLabel(job))),
               ],
             ),
-
             const SizedBox(height: 10),
-
-            /// SALARY
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -187,27 +198,26 @@ class _JobsListScreenState extends State<JobsListScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                job["salary"],
-                style: const TextStyle(color: Colors.green),
+                salaryText,
+                style: TextStyle(
+                  color: salaryText == 'Salary not disclosed'
+                      ? Colors.grey
+                      : Colors.green,
+                ),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            /// BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: kRed),
+                style: ElevatedButton.styleFrom(backgroundColor: primary),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => JobDetailScreen(job: jobObj),
-                    ),
+                    MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
                   );
                 },
-                child: const Text("View Contact"),
+                child: const Text('View Contact'),
               ),
             ),
           ],
@@ -235,7 +245,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Filter by Salary"),
+        title: const Text('Filter by Salary'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -243,8 +253,8 @@ class _JobsListScreenState extends State<JobsListScreen> {
               controller: minCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: "Minimum Salary (₹)",
-                hintText: "e.g., 500",
+                labelText: 'Minimum Salary',
+                hintText: 'e.g., 500',
               ),
             ),
             const SizedBox(height: 16),
@@ -252,8 +262,8 @@ class _JobsListScreenState extends State<JobsListScreen> {
               controller: maxCtrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: "Maximum Salary (₹)",
-                hintText: "e.g., 2000",
+                labelText: 'Maximum Salary',
+                hintText: 'e.g., 2000',
               ),
             ),
           ],
@@ -261,7 +271,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -273,10 +283,33 @@ class _JobsListScreenState extends State<JobsListScreen> {
               });
               Navigator.pop(context);
             },
-            child: const Text("Apply"),
+            child: const Text('Apply'),
           ),
         ],
       ),
     );
+  }
+
+  String _salaryLabel(Job job) {
+    final salary = job.salary?.trim();
+    if (salary == null || salary.isEmpty) {
+      return 'Salary not disclosed';
+    }
+    return salary;
+  }
+
+  String _postedLabel(Job job) {
+    final createdAt = job.createdAt?.trim();
+    if (createdAt == null || createdAt.isEmpty) {
+      return 'Recently posted';
+    }
+
+    final parsed = DateTime.tryParse(createdAt);
+    if (parsed == null) {
+      return 'Posted: $createdAt';
+    }
+
+    final date = parsed.toLocal();
+    return 'Posted: ${date.day}/${date.month}/${date.year}';
   }
 }
