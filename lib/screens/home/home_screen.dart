@@ -1,22 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../jobs/jobs_list_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../jobs/job_search_page.dart';
-import '../profile/profile_screen.dart';
-import '../jobs/find_job_screen.dart';
-import '../workers/find_workers_screen.dart';
 import '../jobs/jobs_home_screen.dart';
-import '../settings/settings_screen.dart';
-import '../notifications_screen.dart';
-import '../messages/messages_inbox_screen.dart';
+import '../jobs/jobs_list_screen.dart';
+import '../jobs/find_job_screen.dart';
 import '../jobs/saved_jobs_screen.dart';
-import '../../services/user_session.dart';
-import '../../services/notification_service.dart';
+import '../messages/messages_inbox_screen.dart';
+import '../notifications_screen.dart';
+import '../profile/profile_screen.dart';
+import '../settings/settings_screen.dart';
+import '../workers/find_workers_screen.dart';
+import '../../services/location_service.dart';
 import '../../services/messaging_service.dart';
+import '../../services/notification_service.dart';
+import '../../services/user_session.dart';
 import '../../utils/offline_handler.dart';
 
-/// 🎨 PROFESSIONAL COLORS (UI ONLY)
 const Color kGreen = Color(0xFF10B981);
 const Color kYellow = Color(0xFFD1D5DB);
+const String kHomeSelectedLocationKey = 'home_selected_location';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +33,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late PageController _pageController;
+
+  final List<Widget> _pages = const [
+    HomeContent(),
+    JobsHomeScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
@@ -41,21 +52,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// 🔒 BACKEND SCREENS – UNCHANGED
-  final List<Widget> _pages = const [
-    HomeContent(),
-    JobsHomeScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-      /// ✅ REQUIRED FOR HAMBURGER MENU
       drawer: const AppDrawer(),
-
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
@@ -63,8 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         children: _pages,
       ),
-
-      /// ✅ BOTTOM NAV WITH SWIPE SUPPORT
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor,
@@ -75,14 +74,14 @@ class _HomeScreenState extends State<HomeScreen> {
           _pageController.jumpToPage(index);
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.work_outline),
-            label: "Jobs",
+            label: 'Jobs',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
-            label: "Profile",
+            label: 'Profile',
           ),
         ],
       ),
@@ -90,9 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// =======================
-/// 🏠 HOME CONTENT
-/// =======================
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
 
@@ -103,28 +99,29 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   final FocusNode _searchFocusNode = FocusNode();
   int _unreadMessageCount = 0;
-  String _selectedLocation = "Delhi";
+  String _selectedLocation = 'Delhi';
+
+  final List<Map<String, dynamic>> categories = const [
+    {'name': 'Plumber', 'icon': Icons.plumbing, 'color': Colors.blue},
+    {'name': 'Painter', 'icon': Icons.format_paint, 'color': Colors.purple},
+    {'name': 'Driver', 'icon': Icons.local_shipping, 'color': Colors.green},
+    {'name': 'Electrician', 'icon': Icons.flash_on, 'color': Colors.orange},
+    {'name': 'Carpenter', 'icon': Icons.handyman, 'color': Colors.deepOrange},
+    {'name': 'Mason', 'icon': Icons.construction, 'color': Colors.red},
+    {'name': 'Cleaner', 'icon': Icons.auto_awesome, 'color': Colors.pink},
+    {'name': 'Gardener', 'icon': Icons.grass, 'color': Colors.greenAccent},
+    {'name': 'Cook', 'icon': Icons.restaurant, 'color': Colors.brown},
+    {'name': 'Security Guard', 'icon': Icons.security, 'color': Colors.grey},
+    {'name': 'Mechanic', 'icon': Icons.build, 'color': Colors.black},
+    {'name': 'Other', 'icon': Icons.more_horiz, 'color': Colors.indigo},
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadUnreadMessageCount();
+    _loadSelectedLocation();
   }
-
-  final List<Map<String, dynamic>> categories = const [
-    {"name": "Plumber", "icon": Icons.plumbing, "color": Colors.blue},
-    {"name": "Painter", "icon": Icons.format_paint, "color": Colors.purple},
-    {"name": "Driver", "icon": Icons.local_shipping, "color": Colors.green},
-    {"name": "Electrician", "icon": Icons.flash_on, "color": Colors.orange},
-    {"name": "Carpenter", "icon": Icons.handyman, "color": Colors.deepOrange},
-    {"name": "Mason", "icon": Icons.construction, "color": Colors.red},
-    {"name": "Cleaner", "icon": Icons.auto_awesome, "color": Colors.pink},
-    {"name": "Gardener", "icon": Icons.grass, "color": Colors.greenAccent},
-    {"name": "Cook", "icon": Icons.restaurant, "color": Colors.brown},
-    {"name": "Security Guard", "icon": Icons.security, "color": Colors.grey},
-    {"name": "Mechanic", "icon": Icons.build, "color": Colors.black},
-    {"name": "Other", "icon": Icons.more_horiz, "color": Colors.indigo},
-  ];
 
   @override
   void dispose() {
@@ -141,6 +138,42 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  Future<void> _loadSelectedLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLocation = prefs.getString(kHomeSelectedLocationKey);
+    if (!mounted || savedLocation == null || savedLocation.trim().isEmpty) {
+      return;
+    }
+
+    setState(() => _selectedLocation = savedLocation.trim());
+  }
+
+  Future<void> _saveSelectedLocation(String location) async {
+    final trimmedLocation = location.trim();
+    if (trimmedLocation.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kHomeSelectedLocationKey, trimmedLocation);
+  }
+
+  Future<void> _openLocationBottomSheet() async {
+    final selectedLocation = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _HomeLocationSheet(initialLocation: _selectedLocation),
+    );
+
+    if (!mounted || selectedLocation == null || selectedLocation.trim().isEmpty) {
+      return;
+    }
+
+    setState(() => _selectedLocation = selectedLocation.trim());
+    await _saveSelectedLocation(selectedLocation);
+  }
+
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).primaryColor;
@@ -149,7 +182,6 @@ class _HomeContentState extends State<HomeContent> {
       onTap: () => _searchFocusNode.unfocus(),
       child: CustomScrollView(
         slivers: [
-          /// 🔴 HEADER (☰ + LOCATION + SEARCH)
           SliverToBoxAdapter(
             child: Builder(
               builder: (context) => Container(
@@ -158,7 +190,6 @@ class _HomeContentState extends State<HomeContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// TOP BAR
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -170,7 +201,7 @@ class _HomeContentState extends State<HomeContent> {
                           },
                         ),
                         const Text(
-                          "Jobsify",
+                          'Jobsify',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -226,19 +257,15 @@ class _HomeContentState extends State<HomeContent> {
                         ),
                       ],
                     ),
-
                     const Text(
-                      "Connect. Work. Grow.",
+                      'Connect. Work. Grow.',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
-
                     const SizedBox(height: 12),
-
-                    /// 📍 LOCATION
                     GestureDetector(
                       onTap: () {
                         _searchFocusNode.unfocus();
-                        _showLocationBottomSheet(context);
+                        _openLocationBottomSheet();
                       },
                       child: Row(
                         children: [
@@ -248,9 +275,13 @@ class _HomeContentState extends State<HomeContent> {
                             size: 16,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            _selectedLocation,
-                            style: const TextStyle(color: Colors.white),
+                          Expanded(
+                            child: Text(
+                              _selectedLocation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
                           const SizedBox(width: 4),
                           const Icon(
@@ -260,10 +291,7 @@ class _HomeContentState extends State<HomeContent> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    /// 🔍 SEARCH
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -285,7 +313,7 @@ class _HomeContentState extends State<HomeContent> {
                         style: const TextStyle(color: Colors.black87),
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.search, color: Colors.grey),
-                          hintText: "Search for services or workers...",
+                          hintText: 'Search for services or workers...',
                           hintStyle: TextStyle(color: Colors.grey),
                           border: InputBorder.none,
                         ),
@@ -296,19 +324,17 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-
-          /// 🔵 CTA CARDS
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final ctaCards = [
                   {
-                    "color": primary,
-                    "title": "Browse Jobs",
-                    "subtitle": "Find available work",
-                    "icon": Icons.work_outline,
-                    "onTap": () {
+                    'color': primary,
+                    'title': 'Browse Jobs',
+                    'subtitle': 'Find available work',
+                    'icon': Icons.work_outline,
+                    'onTap': () {
                       _searchFocusNode.unfocus();
                       Navigator.push(
                         context,
@@ -317,11 +343,11 @@ class _HomeContentState extends State<HomeContent> {
                     },
                   },
                   {
-                    "color": kGreen,
-                    "title": "Find Workers",
-                    "subtitle": "Hire skilled workers",
-                    "icon": Icons.people_outline,
-                    "onTap": () {
+                    'color': kGreen,
+                    'title': 'Find Workers',
+                    'subtitle': 'Hire skilled workers',
+                    'icon': Icons.people_outline,
+                    'onTap': () {
                       _searchFocusNode.unfocus();
                       Navigator.push(
                         context,
@@ -332,11 +358,11 @@ class _HomeContentState extends State<HomeContent> {
                 ];
                 final card = ctaCards[index];
                 return _ctaCard(
-                  color: card["color"] as Color,
-                  title: card["title"] as String,
-                  subtitle: card["subtitle"] as String,
-                  icon: card["icon"] as IconData,
-                  onTap: card["onTap"] as VoidCallback,
+                  color: card['color'] as Color,
+                  title: card['title'] as String,
+                  subtitle: card['subtitle'] as String,
+                  icon: card['icon'] as IconData,
+                  onTap: card['onTap'] as VoidCallback,
                 );
               }, childCount: 2),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -347,8 +373,6 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-
-          /// 🧩 CATEGORIES
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
@@ -360,7 +384,7 @@ class _HomeContentState extends State<HomeContent> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => JobsListScreen(category: c["name"]),
+                        builder: (_) => JobsListScreen(category: c['name']),
                       ),
                     );
                   },
@@ -371,13 +395,13 @@ class _HomeContentState extends State<HomeContent> {
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: c["color"],
-                          child: Icon(c["icon"], color: Colors.white),
+                          backgroundColor: c['color'],
+                          child: Icon(c['icon'], color: Colors.white),
                         ),
                         const SizedBox(height: 10),
-                        Text(c["name"]),
+                        Text(c['name']),
                         const Text(
-                          "Find Now",
+                          'Find Now',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
@@ -393,140 +417,6 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// 📍 LOCATION BOTTOM SHEET
-  void _showLocationBottomSheet(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
-
-    final cities = [
-      "Delhi",
-      "Bangalore",
-      "Hyderabad",
-      "Chennai",
-      "Kolkata",
-      "Pune",
-      "Ahmedabad",
-      "Jaipur",
-    ];
-
-    String searchQuery = "";
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) => SizedBox(
-          height: MediaQuery.of(context).size.height * 0.85,
-          child: Column(
-            children: [
-              /// 🔴 HEADER
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Select Location",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              /// 🎯 CURRENT LOCATION BUTTON
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _selectedLocation = "Current Location";
-                    });
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.my_location),
-                  label: const Text("Use Current Location"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary.withValues(alpha: 0.1),
-                    foregroundColor: primary,
-                    side: BorderSide(color: primary),
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
-              ),
-
-              const Divider(height: 1),
-
-              /// 🔍 SEARCH FIELD
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextField(
-                  onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: "Search city...",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ),
-
-              /// 📍 CITIES LIST
-              Expanded(
-                child: ListView.builder(
-                  itemCount: cities
-                      .where((city) => city.toLowerCase().contains(searchQuery))
-                      .length,
-                  itemBuilder: (context, i) {
-                    final filteredCities = cities
-                        .where((city) => city.toLowerCase().contains(searchQuery))
-                        .toList();
-                    final city = filteredCities[i];
-                    return ListTile(
-                      leading: const Icon(Icons.location_on),
-                      title: Text(city),
-                      trailing: _selectedLocation == city
-                          ? Icon(Icons.check_circle, color: primary)
-                          : null,
-                      onTap: () {
-                        this.setState(() {
-                          _selectedLocation = city;
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -587,9 +477,250 @@ class _HomeContentState extends State<HomeContent> {
   }
 }
 
-/// =======================
-/// 📂 DRAWER (WITH NOTIFICATION BADGE)
-/// =======================
+class _HomeLocationSheet extends StatefulWidget {
+  final String initialLocation;
+
+  const _HomeLocationSheet({required this.initialLocation});
+
+  @override
+  State<_HomeLocationSheet> createState() => _HomeLocationSheetState();
+}
+
+class _HomeLocationSheetState extends State<_HomeLocationSheet> {
+  static const List<String> _popularCities = [
+    'Delhi',
+    'Bangalore',
+    'Hyderabad',
+    'Chennai',
+    'Kolkata',
+    'Pune',
+    'Ahmedabad',
+    'Jaipur',
+  ];
+
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  List<Map<String, String>> _searchResults = [];
+  bool _isSearching = false;
+  bool _isFetchingCurrentLocation = false;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+
+    final query = value.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+        _errorText = null;
+      });
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+      setState(() {
+        _isSearching = true;
+        _errorText = null;
+      });
+
+      try {
+        final results = await LocationService.searchLocations(query);
+        if (!mounted) return;
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+          _errorText = 'Unable to fetch locations';
+        });
+      }
+    });
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() {
+      _isFetchingCurrentLocation = true;
+      _errorText = null;
+    });
+
+    try {
+      final location = await LocationService.getCurrentLocation();
+      if (!mounted) return;
+      Navigator.pop(context, location['place']?.toString() ?? 'Unknown location');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isFetchingCurrentLocation = false;
+        _errorText = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+    final query = _searchController.text.trim();
+    final showPopularCities = query.isEmpty;
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.85,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: primary,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Select Location',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: ElevatedButton.icon(
+              onPressed: _isFetchingCurrentLocation ? null : _useCurrentLocation,
+              icon: _isFetchingCurrentLocation
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location),
+              label: Text(
+                _isFetchingCurrentLocation
+                    ? 'Fetching current location...'
+                    : 'Use Current Location',
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary.withValues(alpha: 0.1),
+                foregroundColor: primary,
+                side: BorderSide(color: primary),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search city, area or town...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+          if (_errorText != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.redAccent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorText!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : showPopularCities
+                ? ListView.builder(
+                    itemCount: _popularCities.length,
+                    itemBuilder: (context, index) {
+                      final city = _popularCities[index];
+                      final isSelected = widget.initialLocation == city;
+
+                      return ListTile(
+                        leading: const Icon(Icons.location_city),
+                        title: Text(city),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, color: primary)
+                            : null,
+                        onTap: () => Navigator.pop(context, city),
+                      );
+                    },
+                  )
+                : _searchResults.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No matching locations found',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final result = _searchResults[index];
+                      final place = result['place'] ?? '';
+                      final displayName = result['display_name'] ?? place;
+                      final isSelected = widget.initialLocation == place;
+
+                      return ListTile(
+                        leading: const Icon(Icons.location_on),
+                        title: Text(place),
+                        subtitle: Text(
+                          displayName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, color: primary)
+                            : null,
+                        onTap: () => Navigator.pop(context, place),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
 
@@ -639,19 +770,18 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
             accountName: ValueListenableBuilder<String?>(
               valueListenable: UserSession.userNameNotifier,
-              builder: (_, name, _) => Text(name ?? "User"),
+              builder: (_, name, _) => Text(name ?? 'User'),
             ),
             accountEmail: ValueListenableBuilder<String?>(
               valueListenable: UserSession.emailNotifier,
-              builder: (_, email, _) => Text(email ?? ""),
+              builder: (_, email, _) => Text(email ?? ''),
             ),
           ),
-
-          _drawerItem(context, Icons.home_outlined, "Home"),
+          _drawerItem(context, Icons.home_outlined, 'Home'),
           _drawerItem(
             context,
             Icons.person_outline,
-            "Profile",
+            'Profile',
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -663,7 +793,7 @@ class _AppDrawerState extends State<AppDrawer> {
           _drawerItem(
             context,
             Icons.bookmark_border,
-            "Saved Items",
+            'Saved Items',
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -675,7 +805,7 @@ class _AppDrawerState extends State<AppDrawer> {
           _drawerItemWithBadge(
             context,
             Icons.notifications_none,
-            "Notifications",
+            'Notifications',
             _unreadCount,
             onTap: () async {
               Navigator.pop(context);
@@ -683,17 +813,15 @@ class _AppDrawerState extends State<AppDrawer> {
                 context,
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
-              // Refresh unread count when returning
               if (mounted) {
                 _loadUnreadCount();
               }
             },
           ),
-
           _drawerItem(
             context,
             Icons.settings_outlined,
-            "Settings",
+            'Settings',
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -702,25 +830,23 @@ class _AppDrawerState extends State<AppDrawer> {
               );
             },
           ),
-
           const Spacer(),
           const Divider(),
-
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text("Logout", style: TextStyle(color: Colors.red)),
+            title: const Text('Logout', style: TextStyle(color: Colors.red)),
             onTap: () async {
               final navigator = Navigator.of(context);
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (context) {
                   return AlertDialog(
-                    title: const Text("Confirm Logout"),
-                    content: const Text("Are you sure you want to logout?"),
+                    title: const Text('Confirm Logout'),
+                    content: const Text('Are you sure you want to logout?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text("Cancel"),
+                        child: const Text('Cancel'),
                       ),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(context, true),
@@ -728,7 +854,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           backgroundColor: Colors.red.shade300,
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text("Logout"),
+                        child: const Text('Logout'),
                       ),
                     ],
                   );
@@ -741,7 +867,6 @@ class _AppDrawerState extends State<AppDrawer> {
               }
             },
           ),
-
           const SizedBox(height: 12),
         ],
       ),
