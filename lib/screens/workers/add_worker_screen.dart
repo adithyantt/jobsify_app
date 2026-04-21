@@ -21,6 +21,21 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
   final _formKey = GlobalKey<FormState>();
   final firstNameCtrl = TextEditingController();
   final lastNameCtrl = TextEditingController();
+
+  void _capitalizeFirstLetter(TextEditingController controller) {
+    final text = controller.text.trim();
+    if (text.isNotEmpty) {
+      final capitalized = text[0].toUpperCase() + text.substring(1);
+      if (controller.text != capitalized) {
+        controller.value = controller.value.copyWith(
+          text: capitalized,
+          selection: TextSelection.collapsed(offset: capitalized.length),
+          composing: TextRange.empty,
+        );
+      }
+    }
+  }
+
   final roleCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
   final expCtrl = TextEditingController();
@@ -57,12 +72,23 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
   @override
   void initState() {
     super.initState();
+    firstNameCtrl.addListener(() => _capitalizeFirstLetter(firstNameCtrl));
+    lastNameCtrl.addListener(() => _capitalizeFirstLetter(lastNameCtrl));
+
     if (widget.workerToEdit != null) {
       final nameParts = widget.workerToEdit!.name.split(' ');
       if (nameParts.isNotEmpty) {
-        firstNameCtrl.text = nameParts.first;
+        var firstName = nameParts.first.trim();
+        if (firstName.isNotEmpty) {
+          firstNameCtrl.text =
+              firstName[0].toUpperCase() + firstName.substring(1);
+        }
         if (nameParts.length > 1) {
-          lastNameCtrl.text = nameParts.sublist(1).join(' ');
+          var lastName = nameParts.sublist(1).join(' ').trim();
+          if (lastName.isNotEmpty) {
+            lastNameCtrl.text =
+                lastName[0].toUpperCase() + lastName.substring(1);
+          }
         }
       }
       selectedRole = roles.contains(widget.workerToEdit!.role)
@@ -87,6 +113,8 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
 
   @override
   void dispose() {
+    firstNameCtrl.removeListener(() => _capitalizeFirstLetter(firstNameCtrl));
+    lastNameCtrl.removeListener(() => _capitalizeFirstLetter(lastNameCtrl));
     firstNameCtrl.dispose();
     lastNameCtrl.dispose();
     roleCtrl.dispose();
@@ -300,10 +328,12 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
                           ),
                         ),
                         items: roles
-                            .map((role) => DropdownMenuItem(
-                                  value: role,
-                                  child: Text(role),
-                                ))
+                            .map(
+                              (role) => DropdownMenuItem(
+                                value: role,
+                                child: Text(role),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value == null) return;
@@ -626,7 +656,9 @@ class _AddWorkerScreenState extends State<AddWorkerScreen> {
       keyboardType: inputType,
       textCapitalization: inputType == TextInputType.number
           ? TextCapitalization.none
-          : TextCapitalization.words,
+          : (label == "First Name" || label == "Last Name"
+                ? TextCapitalization.sentences
+                : TextCapitalization.words),
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
