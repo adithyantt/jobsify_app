@@ -134,21 +134,24 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
   }
 
   Future<void> _initEverything() async {
-    try {
-      final loc = await LocationService.getCurrentLocation();
-      userLat = loc["lat"];
-      userLng = loc["lng"];
-      setState(() {
-        locationStatus = loc["place"];
-        locationLoaded = true;
-      });
+    final loc = await LocationService.getCurrentLocation();
+    userLat = loc["lat"];
+    userLng = loc["lng"];
+    final place = loc["place"] ?? "Unknown";
+    final isValidLocation =
+        userLat != 0.0 &&
+        !place.toLowerCase().startsWith('unable') &&
+        !place.toLowerCase().startsWith('location permission') &&
+        !place.toLowerCase().startsWith('services disabled');
+
+    setState(() {
+      locationStatus = place;
+      locationLoaded = isValidLocation;
+    });
+
+    // Reload workers for distance sorting if valid location
+    if (isValidLocation) {
       await _loadWorkers();
-    } catch (_) {
-      setState(() {
-        locationStatus = "Location permission required";
-        locationLoaded = false;
-        isLoading = false;
-      });
     }
   }
 
@@ -316,9 +319,11 @@ class _FindWorkersScreenState extends State<FindWorkersScreen> {
                         const SizedBox(width: 4),
                         Text(
                           locationLoaded
-                              ? "Workers near you"
-                              : "Location not available",
+                              ? "Workers near $locationStatus"
+                              : locationStatus,
                           style: const TextStyle(color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         if (!locationLoaded) ...[
                           const SizedBox(width: 8),
