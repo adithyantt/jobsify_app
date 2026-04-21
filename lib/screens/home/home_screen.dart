@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../jobs/jobs_list_screen.dart';
+import '../jobs/job_search_page.dart';
 import '../profile/profile_screen.dart';
 import '../jobs/find_job_screen.dart';
 import '../workers/find_workers_screen.dart';
@@ -102,6 +103,8 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   final FocusNode _searchFocusNode = FocusNode();
   int _unreadMessageCount = 0;
+  String _selectedLocation = "Delhi";
+
   @override
   void initState() {
     super.initState();
@@ -238,16 +241,22 @@ class _HomeContentState extends State<HomeContent> {
                         _showLocationBottomSheet(context);
                       },
                       child: Row(
-                        children: const [
-                          Icon(
+                        children: [
+                          const Icon(
                             Icons.location_on,
                             color: Colors.white,
                             size: 16,
                           ),
-                          SizedBox(width: 4),
-                          Text("Delhi", style: TextStyle(color: Colors.white)),
-                          SizedBox(width: 4),
-                          Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            _selectedLocation,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                          ),
                         ],
                       ),
                     ),
@@ -264,6 +273,15 @@ class _HomeContentState extends State<HomeContent> {
                       ),
                       child: TextField(
                         focusNode: _searchFocusNode,
+                        onTap: () {
+                          _searchFocusNode.unfocus();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const JobSearchPage(),
+                            ),
+                          );
+                        },
                         style: const TextStyle(color: Colors.black87),
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.search, color: Colors.grey),
@@ -394,62 +412,120 @@ class _HomeContentState extends State<HomeContent> {
       "Jaipur",
     ];
 
+    String searchQuery = "";
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.75,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: primary,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.85,
+          child: Column(
+            children: [
+              /// 🔴 HEADER
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Select Location",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Select Location",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+
+              /// 🎯 CURRENT LOCATION BUTTON
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedLocation = "Current Location";
+                    });
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.my_location),
+                  label: const Text("Use Current Location"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary.withValues(alpha: 0.1),
+                    foregroundColor: primary,
+                    side: BorderSide(color: primary),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
+
+              const Divider(height: 1),
+
+              /// 🔍 SEARCH FIELD
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: "Search city...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: "Search city...",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: cities.length,
-                itemBuilder: (context, i) => ListTile(
-                  leading: const Icon(Icons.location_on),
-                  title: Text(cities[i]),
-                  onTap: () => Navigator.pop(context),
+
+              /// 📍 CITIES LIST
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cities
+                      .where((city) => city.toLowerCase().contains(searchQuery))
+                      .length,
+                  itemBuilder: (context, i) {
+                    final filteredCities = cities
+                        .where((city) => city.toLowerCase().contains(searchQuery))
+                        .toList();
+                    final city = filteredCities[i];
+                    return ListTile(
+                      leading: const Icon(Icons.location_on),
+                      title: Text(city),
+                      trailing: _selectedLocation == city
+                          ? Icon(Icons.check_circle, color: primary)
+                          : null,
+                      onTap: () {
+                        this.setState(() {
+                          _selectedLocation = city;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
