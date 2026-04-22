@@ -139,6 +139,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
         longitude: longitude,
         userEmail: UserSession.email ?? '',
         urgent: urgent,
+        salary: salaryCtrl.text.trim(),
         requiredWorkers: requiredWorkers,
       );
 
