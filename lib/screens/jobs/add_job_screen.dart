@@ -58,8 +58,8 @@ class _AddJobScreenState extends State<AddJobScreen> {
       _phoneController.text = widget.jobToEdit!.phone;
       _salaryController.text = widget.jobToEdit!.salary ?? '';
       _urgent = widget.jobToEdit!.urgent;
-      _requiredWorkersController.text =
-          widget.jobToEdit!.requiredWorkers.toString();
+      _requiredWorkersController.text = widget.jobToEdit!.requiredWorkers
+          .toString();
       _latitude = widget.jobToEdit!.latitude;
       _longitude = widget.jobToEdit!.longitude;
       _useCurrentLocation = _latitude != null && _longitude != null;
@@ -413,10 +413,10 @@ class _AddJobScreenState extends State<AddJobScreen> {
         value: _selectedCategory,
         isExpanded: true,
         items: _categories
-            .map((category) => DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
-                ))
+            .map(
+              (category) =>
+                  DropdownMenuItem(value: category, child: Text(category)),
+            )
             .toList(),
         onChanged: (value) => setState(() => _selectedCategory = value!),
       ),

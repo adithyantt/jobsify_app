@@ -35,23 +35,50 @@ class _PostJobScreenState extends State<PostJobScreen> {
   String? longitude;
   bool fetchingLocation = false;
 
-  final List<String> categories = [
+  final TextEditingController categoryCtrl = TextEditingController();
+  final List<String> categories = const [
     "Plumber",
     "Painter",
     "Driver",
     "Electrician",
     "Carpenter",
     "Cleaner",
+    "Other",
   ];
+
+  void _capitalizeFirstLetter(TextEditingController controller) {
+    String text = controller.text;
+    if (text.isEmpty) return;
+
+    // Capitalize first letter only
+    if (text[0].toUpperCase() != text[0]) {
+      text = text[0].toUpperCase() + text.substring(1);
+      controller.value = TextEditingValue(
+        text: text,
+        selection: controller.selection,
+        composing: TextRange.empty,
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    titleCtrl.addListener(() => _capitalizeFirstLetter(titleCtrl));
+    descCtrl.addListener(() => _capitalizeFirstLetter(descCtrl));
+  }
 
   @override
   void dispose() {
+    titleCtrl.removeListener(() => _capitalizeFirstLetter(titleCtrl));
+    descCtrl.removeListener(() => _capitalizeFirstLetter(descCtrl));
     titleCtrl.dispose();
     descCtrl.dispose();
     locationCtrl.dispose();
     salaryCtrl.dispose();
     phoneCtrl.dispose();
     requiredWorkersCtrl.dispose();
+    categoryCtrl.dispose();
     super.dispose();
   }
 
@@ -99,9 +126,12 @@ class _PostJobScreenState extends State<PostJobScreen> {
     final requiredWorkers = int.tryParse(requiredWorkersCtrl.text) ?? 1;
 
     try {
+      final categoryValue = category == "Other"
+          ? categoryCtrl.text.trim()
+          : category;
       await JobService.createJob(
         title: titleCtrl.text.trim(),
-        category: category,
+        category: categoryValue,
         description: descCtrl.text.trim(),
         location: locationCtrl.text.trim(),
         phone: phoneCtrl.text.trim(),
@@ -155,7 +185,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
                     _label("Job Title"),
                     TextFormField(
                       controller: titleCtrl,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization: TextCapitalization.none,
                       decoration: _fieldDecoration(
                         context,
                         hint: "e.g. Need plumber for pipe repair",
@@ -168,22 +198,53 @@ class _PostJobScreenState extends State<PostJobScreen> {
                     _label("Category"),
                     DropdownButtonFormField<String>(
                       value: category,
+                      decoration: const InputDecoration(
+                        labelText: "Category",
+                        border: InputBorder.none,
+                        prefixIcon: Icon(
+                          Icons.category_outlined,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                      ),
                       items: categories
                           .map(
                             (c) => DropdownMenuItem(value: c, child: Text(c)),
                           )
                           .toList(),
-                      onChanged: (v) => setState(() => category = v!),
-                      decoration: _fieldDecoration(
-                        context,
-                        icon: Icons.category_outlined,
-                      ),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() {
+                          category = v;
+                          if (category != "Other") categoryCtrl.clear();
+                        });
+                      },
                     ),
+                    if (category == "Other") ...[
+                      const SizedBox(height: 12),
+                      _input(
+                        context,
+                        controller: categoryCtrl,
+                        hint: "Enter your category",
+                        validator: (value) {
+                          if (category != "Other") return null;
+                          final cat = value?.trim() ?? '';
+                          if (cat.isEmpty) {
+                            return "Category is required";
+                          }
+                          if (cat.length < 3) {
+                            return "Category must be at least 3 characters";
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     _label("Job Description"),
                     TextFormField(
                       controller: descCtrl,
                       maxLines: 4,
+                      textCapitalization: TextCapitalization.none,
                       validator: (v) =>
                           v!.trim().isEmpty ? "Enter description" : null,
                       decoration: _fieldDecoration(
@@ -293,6 +354,13 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       controller: salaryCtrl,
                       hint: "e.g. ₹800-1000/day",
                       icon: Icons.currency_rupee,
+                      validator: (value) {
+                        final salary = value?.trim() ?? '';
+                        if (salary.isEmpty) {
+                          return "Salary is required";
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     _label("Contact Number"),
@@ -313,6 +381,13 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       hint: "1",
                       keyboardType: TextInputType.number,
                       icon: Icons.group,
+                      validator: (value) {
+                        final workers = value?.trim() ?? '';
+                        if (workers.isEmpty) {
+                          return "Number of workers is required";
+                        }
+                        return null;
+                      },
                     ),
                   ],
                 ),
